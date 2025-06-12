@@ -1,0 +1,37 @@
+% \chapter{Introduction}
+% \label{cha:intro}
+
+% \section{Register Allocation}
+% \label{sec:context}
+% This document will outline some theoretical and practical aspects of the
+% creation of a register allocator for a single static assignment (SSA)
+% intermediate representation.
+% For the implementation of the register allocator we will use the Coq proof
+% assistant and, in particular, its functional language ``Gallina'' that provides
+% built-in features for, among other functionalities, ensuring termination of the
+% presented algorithms.
+
+% \section{Complexity of the Register Allocation Problem}
+% \label{sec:problem}
+% However, as we will later prove, the register allocation procedure is an
+% $\mathcal{NP}$-complete problem as any instance of it can be reduced to an
+% instance of the graph coloring problem.
+
+% \section{An heuristic algorithm}
+% \label{sec:solution}
+% We make the following contributions:
+% \begin{itemize}
+%     \item We define an intermediate representation in SSA form suited for
+%     register allocation. The representation must be simple enough not to be a
+%     burden on the frontend, but at the same be expressive enough to facilitate
+%     the register allocation phase and avoid any unnecessary computation.
+%     Along with the syntax for our IR, we define clear semantics by implementing
+%     an interpreter.
+%     \item We provide  insights on the implementation of the following steps of a
+%     register allocator:
+%     \begin{itemize}
+%         \item Liveness analysis and creation of the interference graph
+%         \item Register allocation (graph coloring)
+%         \item SSA destruction
+%     \end{itemize}
+% \end{itemize}
