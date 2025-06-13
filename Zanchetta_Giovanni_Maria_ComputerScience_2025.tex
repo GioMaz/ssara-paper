@@ -19,7 +19,23 @@
 \usepackage{epsfig}
 \usepackage{plain}
 \usepackage{setspace}
+
 \usepackage{todonotes}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{listings}
+
+\lstdefinestyle{ssa}{
+  basicstyle=\ttfamily,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  numbersep=5pt,
+  tabsize=2,
+  showstringspaces=false
+}
+
 \usepackage[paperheight=29.7cm,paperwidth=21cm,outer=1.5cm,inner=2.5cm,top=2cm,bottom=2cm]{geometry} % layout setting
 \usepackage{titlesec} % custom setup title of chanpter
 % \usepackage{newtxtext,newtxmath} % times new roman
@@ -128,8 +144,9 @@
       %
       \input{chapter1}
       \input{chapter2}
-      \input{chapter3}
-      %\input{chapter4}
+      % \input{chapter3}
+      % \input{chapter4}
+      % \input{chapter5}
       
       
     \endgroup
