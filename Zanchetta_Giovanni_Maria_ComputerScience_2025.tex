@@ -22,19 +22,9 @@
 
 \usepackage{todonotes}
 \usepackage{xcolor}
-\usepackage{amsmath}
+\usepackage{amsmath, amssymb}
 \usepackage{listings}
-
-\lstdefinestyle{ssa}{
-  basicstyle=\ttfamily,
-  keywordstyle=\color{blue},
-  commentstyle=\color{gray},
-  numbers=left,
-  numberstyle=\tiny\color{gray},
-  numbersep=5pt,
-  tabsize=2,
-  showstringspaces=false
-}
+\usepackage{fullpage}
 
 \usepackage[paperheight=29.7cm,paperwidth=21cm,outer=1.5cm,inner=2.5cm,top=2cm,bottom=2cm]{geometry} % layout setting
 \usepackage{titlesec} % custom setup title of chanpter
@@ -51,6 +41,15 @@
 
 % italian language
 %\usepackage[italian]{babel}
+
+% Coq language definition for lstlistings
+\lstdefinelanguage{Coq}{
+  morekeywords={Definition, Inductive, Class, Instance, Fixpoint, Function, forall, exists, match, with, end, if, then, else, let, fix, in, Some, None, fun, Type, Prop, Set},
+  sensitive=true,
+  morecomment=[l]{(*},
+  morecomment=[s]{(*}{*)},
+  morestring=[b]",
+}
 
 \begin{document}
 
@@ -95,9 +94,9 @@
     % index
     \tableofcontents
     \clearpage
-    
-    
-          
+
+
+
     % group to define space between chapters
     \begingroup
       % no page break between chapters
@@ -110,14 +109,14 @@
       %   Title
       % to
       %   X   Title
-      
+
       \titleformat{\chapter}
         {\normalfont\Huge\bfseries}{\thechapter}{1em}{}
-        
+
       \titlespacing*{\chapter}{0pt}{0.59in}{0.02in}
       \titlespacing*{\section}{0pt}{0.20in}{0.02in}
       \titlespacing*{\subsection}{0pt}{0.10in}{0.02in}
-      
+
       % summary / abstract
       \input{abstract}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -136,7 +135,7 @@
 %%   reached results, the personal contribution of the student has to be highlighted
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%      
-      
+
       %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
       % chapters
       %
@@ -144,11 +143,11 @@
       %
       \input{chapter1}
       \input{chapter2}
-      % \input{chapter3}
+      \input{chapter3}
       % \input{chapter4}
       % \input{chapter5}
-      
-      
+
+
     \endgroup
 
 
@@ -193,7 +192,6 @@
 %%     (day/month/year).   
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
 
     \titleformat{\chapter}
         {\normalfont\Huge\bfseries}{Appendix \thechapter}{1em}{}

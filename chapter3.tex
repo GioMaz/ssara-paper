@@ -1,3 +1,70 @@
 \chapter{Implementation}
 \label{cha:implementation}
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec sed nunc orci. Aliquam nec nisl vitae sapien pulvinar dictum quis non urna. Suspendisse at dui a erat aliquam vestibulum. Quisque ultrices pellentesque pellentesque. Pellentesque egestas quam sed blandit tempus. Sed congue nec risus posuere euismod. Maecenas ut lacus id mauris sagittis egestas a eu dui. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Pellentesque at ultrices tellus. Ut eu purus eget sem iaculis ultricies sed non lorem. Curabitur gravida dui eget ex vestibulum venenatis. Phasellus gravida tellus velit, non eleifend justo lobortis eget. 
+
+\section{Syntax}
+In creating the syntax of our intermediate language the main objective is to define types that make it hard to represet illegal SSA programs.
+
+\subsection{Registers}
+During the first part of the register allocation our representation will make use virtual registers and, in the second part we will switch to a version of the language that uses physical registers. To do this we need to define a generic implementation that can work with both virtual and physical registers.
+Fortunately, Coq allows us to use type classes to achieve this. We can define a class that represents a generic register, whose implementation can be easily swapped as needed.
+
+\begin{lstlisting}[language=Coq]
+Class RegClass := {
+  reg : Set;
+  reg_eqb : reg -> reg -> bool;
+  reg_eq_dec : forall r r' : reg, {r = r'} + {r <> r'};
+}.
+\end{lstlisting}
+
+For every Coq module we need to provide an instance of this class that defines \textbf{reg}, the set of all registers, \textbf{reg\_eqb}, a boolean function to check for equality between registers and \textbf{reg\_eq\_dec}, a proof for the decidability of the equality relation between two registers.
+
+For virtual registers, we want to use a set of infinite size, we can simply do this by defining the set of registers to be the set of natural numbers, even though in Coq this set is bound by the stack size we can assume it can represent an infinite amount of registers.
+For physical registers instead we use a custom set with which contains the phsyical registers of an already existing assembly language, for the sake of this project we chose the 64bit portion of the registers of the x86 architecture.
+For now on every time we mention a register we must associate it to the virtual or physical implementation depending on the context.
+
+\subsection{Normal Instructions}
+
+Like many intermediate languages, ours will include some basic typing, in particular, a value in our language could be an immediate value represented as an integer, a register or a pointer to a memory location. The value type is defined as follows:
+
+\begin{lstlisting}[language=Coq]
+Definition ptr : Type := nat.
+
+Inductive val : Type :=
+  | Imm (x : Z)
+  | Reg (r : reg)
+  | Ptr (p : ptr)
+.
+\end{lstlisting}
+
+The next step is to define the expression type, which will include the operations supported by our language, in particular we define operations for copying a value from a register, getting the content from a memory location and finally performing logic and arithmetic calculations. The resulting type is defined as follows:
+
+\begin{lstlisting}[language=Coq]
+Inductive expr : Type :=
+  | Val : val -> expr
+  | Load : val -> expr
+  | Add : reg -> val -> expr
+  | Sub : reg -> val -> expr
+  ...
+  | CmpEq : reg -> val -> expr
+  | CmpNe : reg -> val -> expr
+  ...
+.
+\end{lstlisting}
+
+The first operator of a binary expression is of type \textbf{reg} because we assume that an expression cannot have two constant arguments, since in that case the result could be calculated during the constant folding step of the compilation.
+Another thing to note is that, for the sake of register allocation, a differentiation between unary, binary and n-ary expressions is useless as we are only concerned with the operators of an expression (the registers) and not the operation.
+
+Now it's finally time to define our instruction type, which is a rather simple task:
+
+\begin{lstlisting}[language=Coq]
+  Inductive inst : Type :=
+  | Def (r : reg) (e : expr)
+  | Store (v : val) (r : reg)
+.
+\end{lstlisting}
+
+As we can see, we also define a constructor for the store operation, used for storing the content of a register into a memory location, we do this here because the store is the only operation that doesn't produce a value as a result and so it cannot be represented as an assignment of an expression to a register.
+
+\section{Semantics}
+
+

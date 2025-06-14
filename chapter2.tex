@@ -15,7 +15,7 @@ The second way to ensure termination is to use the \textbf{Function} keyword and
 We will mostly use the first option assuming we know how many iterations we need for each algorithm.
 
 \subsection{OCaml extraction}
-\todo[inline]{extraction}
+\todo[inline]{Content}
 
 \section{Single Static Assigment}
 \label{sec:ssa}
@@ -30,11 +30,11 @@ We say that label $l_1$ dominates label $l_2$ iff for every path from the start 
 In practice to make an SSA form language usable we must include some additional features.
 
 \subsection{Control Flow Graphs}
-To match the expressiveness of programming languages we represent a program as a control flow graph (CFG) which is defined as the triple $(B, CF, \textbf{start})$ where $B$ is the set of basic blocks which are linear sequences of instructions that terminate with a branch instruction. Then we have $CF \subseteq B \times B$ which is the edge relation that represents the control flow. And finally $\textbf{start} \in B$ which is the starting point of the program.
+To match the expressiveness of programming languages we represent a program as a control flow graph (CFG) which is defined as the triple $(B, CF, \textbf{start})$ where $B$ is the set of basic blocks where each basic block is composed by a section of phi instructions of which we will talk in the next subsection, a linear sequence of instructions and a final branch instruction. Then we have $CF \subseteq B \times B$ which is the edge relation that represents the control flow. And finally $\textbf{start} \in B$ which is the starting point of the program.
 
 \subsection{Phi Operations}
 As a direct consequence of the single assignment policy we are forced to introduce the $\phi$-operation which is an instruction of the form $x \leftarrow \phi((y_1, b_1), (y_2, b_2), \dots, (y_n, b_n))$ where $y_1, y_2, \dots, y_n$ are variables live respectively at blocks $b_1, b_2, \dots, b_n$.
-The phi operations are are always placed at the start of a basic block, here follows an example:
+The phi operations are are always placed at the start of a basic block, here follows an example of a phi section:
 \[
 \begin{pmatrix}
     x_1 \\ x_2 \\ \vdots \\ x_m
@@ -53,9 +53,10 @@ Another important feature of phi semantics is that the phi instructions get exec
 \section{Register Allocation}
 \label{sec:ra}
 
-Register Allocation is the process of mapping the set of variables, which can be virtually infinite, to a set of finite physical registers. It is a known result that register allocation can be reduced to graph coloring. First we take the interference graph $G = (V, E)$ where $V$ is the set of variables and $E$ is the edge relation such that $(u, v) \in E$ iff there is a point in our program where $u$ and $v$ are both live, this intuitively implies that variables $u$ and $v$ cannot be assigned to the same physical register.
-We can then use a graph coloring algorithm on the interference graph where each color represents a physical register and the result will be a valid solution for the register allocation problem.
+Register Allocation is the computational problem of mapping a set of variables, which can be virtually infinite, to a finite set of physical registers. It is a known result that register allocation can be reduced to the graph coloring problem. To see this, first we take the interference graph $G = (V, E)$ where $V$ is the set of variables and $E$ is the edge relation such that $(u, v) \in E$ iff there is a point in our program where both $u$ and $v$ are live, this intuitively means that variables $u$ and $v$ cannot be assigned to the same physical register.
+We can then use a graph coloring algorithm on the interference graph where each color represents a physical register and get a valid solution for the register allocation problem.
 Obtaining a $k$-coloring of an interference graph thus provides us with a valid register allocation for a machine with $k$ physical registers.
 
 \subsection{Register Allocation in SSA form}
 As we know graph coloring of a general graph is an $\mathcal{NP}$-complete problem, however programs in SSA form have an interference graph which is chordal and coloring a graph with this restriction can be solved in quadratic time.
+
