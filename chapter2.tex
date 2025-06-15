@@ -4,7 +4,11 @@ In this chapter we will introduce the tools we will use during the course of our
 
 \section{The Coq Proof Assistant}
 The implementation of the core of our register allocator will be performed in Coq. Coq is an interactive proof assistant that leverages a strongly typed functional programming language called Gallina for its computational part. 
-During the course of the project will in fact focus more on the computational aspect of the implementation rather than proving the correctness of said algorithms.
+During the course of the project will in fact focus more on the computational aspect of the implementation rather than proving the correctness of the algorithms.
+
+\subsection{Inductives and CoInductives}
+\label{subsec:ind-coind}
+\todo[inline]{Content}
 
 \subsection{Function termination}
 One feature of Coq that we will make extensive use of is the termination checking for functions. Using the \textbf{Fixpoint} keywork lets us insert a recursive function definition that pattern matches over inductive types.
@@ -30,9 +34,11 @@ We say that label $l_1$ dominates label $l_2$ iff for every path from the start 
 In practice to make an SSA form language usable we must include some additional features.
 
 \subsection{Control Flow Graphs}
-To match the expressiveness of programming languages we represent a program as a control flow graph (CFG) which is defined as the triple $(B, CF, \textbf{start})$ where $B$ is the set of basic blocks where each basic block is composed by a section of phi instructions of which we will talk in the next subsection, a linear sequence of instructions and a final branch instruction. Then we have $CF \subseteq B \times B$ which is the edge relation that represents the control flow. And finally $\textbf{start} \in B$ which is the starting point of the program.
+\label{subsec:cfg}
+To match the expressiveness of programming languages we represent a program as a control flow graph (CFG) which is defined as the triple $(B, CF, \textbf{start})$ where $B$ is the set of basic blocks where each basic block is composed by a section of phi instructions of which we will talk in \Cref{subsec:phi}, a linear sequence of instructions and a final branch instruction. Then we have $CF \subseteq B \times B$ which is the edge relation that represents the control flow. And finally $\textbf{start} \in B$ which is the starting point of the program.
 
 \subsection{Phi Operations}
+\label{subsec:phi}
 As a direct consequence of the single assignment policy we are forced to introduce the $\phi$-operation which is an instruction of the form $x \leftarrow \phi((y_1, b_1), (y_2, b_2), \dots, (y_n, b_n))$ where $y_1, y_2, \dots, y_n$ are variables live respectively at blocks $b_1, b_2, \dots, b_n$.
 The phi operations are are always placed at the start of a basic block, here follows an example of a phi section:
 \[

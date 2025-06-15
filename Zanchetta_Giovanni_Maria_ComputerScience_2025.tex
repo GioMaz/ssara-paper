@@ -25,6 +25,7 @@
 \usepackage{amsmath, amssymb}
 \usepackage{listings}
 \usepackage{fullpage}
+\usepackage{cleveref}
 
 \usepackage[paperheight=29.7cm,paperwidth=21cm,outer=1.5cm,inner=2.5cm,top=2cm,bottom=2cm]{geometry} % layout setting
 \usepackage{titlesec} % custom setup title of chanpter
@@ -44,7 +45,7 @@
 
 % Coq language definition for lstlistings
 \lstdefinelanguage{Coq}{
-  morekeywords={Definition, Inductive, Class, Instance, Fixpoint, Function, forall, exists, match, with, end, if, then, else, let, fix, in, Some, None, fun, Type, Prop, Set},
+  morekeywords={Definition, Inductive, CoInductive, Class, Instance, Fixpoint, CoFixpoint, Function, forall, exists, match, with, end, if, then, else, let, fix, in, Some, None, fun, Type, Prop, Set},
   sensitive=true,
   morecomment=[l]{(*},
   morecomment=[s]{(*}{*)},
