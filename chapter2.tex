@@ -6,7 +6,7 @@ In this chapter we will introduce the tools we will use during the course of our
 The implementation of the core of our register allocator will be performed in Coq. Coq is an interactive proof assistant that leverages a strongly typed functional programming language called Gallina for its computational part. 
 During the course of the project will in fact focus more on the computational aspect of the implementation rather than proving the correctness of the algorithms.
 
-\subsection{Inductives and CoInductives}
+\subsection{The Coq Type System}
 \label{subsec:ind-coind}
 \todo[inline]{Content}
 
@@ -18,7 +18,7 @@ the first one is the easiest, it consists in forcing into the function signature
 The second way to ensure termination is to use the \textbf{Function} keyword and then provide Coq with a proof of the termination of the algorithm.
 We will mostly use the first option assuming we know how many iterations we need for each algorithm.
 
-\subsection{OCaml extraction}
+\subsection{OCaml Extraction}
 \todo[inline]{Content}
 
 \section{Single Static Assigment}

@@ -29,11 +29,10 @@ For now on every time we mention a register we must associate it to the virtual 
 Like many intermediate languages, ours will include some basic typing, in particular, a value in our language could be an immediate value implemented as an integer, a register or a pointer to a memory location implemented as a natural. The value type is defined as follows:
 
 \begin{lstlisting}[language=Coq]
-Definition imm : Type := Z.
 Definition ptr : Type := nat.
 
 Inductive val : Type :=
-  | Imm (x : imm)
+  | Imm (x : Z)
   | Reg (r : reg)
   | Ptr (p : ptr)
 .
@@ -47,9 +46,6 @@ Inductive expr : Type :=
   | Load : val -> expr
   | Add : reg -> val -> expr
   | Sub : reg -> val -> expr
-  ...
-  | CmpEq : reg -> val -> expr
-  | CmpNe : reg -> val -> expr
   ...
 .
 \end{lstlisting}
@@ -90,9 +86,9 @@ CoInductive block : Type :=
   | Block (l : lbl) (ps : list phi) (is : list inst) (j : jinst)
 
 with jinst : Type :=
-  | Jnz (r : reg) (b1 : block) (b2 : block)
-  | Jmp (b : block)
-  | Halt
+  | CondJump : cond -> reg -> val -> block -> block -> jinst
+  | Jump : block -> jinst
+  | Halt : jinst
 .
 \end{lstlisting}
 
@@ -127,7 +123,7 @@ The introduction of labels makes it possible to have multiple blocks with the sa
 
 \begin{lstlisting}[language=Coq]
 Definition double_lbl_2 : block := Block 0 [] [] Halt.
-Definition double_lbl_1 : block := Block 0 [] [] (Jmp double_lbl_2).
+Definition double_lbl_1 : block := Block 0 [] [] (Jump double_lbl_2).
 \end{lstlisting}
 
 Finally phi instructions are prone to containing inconsistent data. The problem is that the arguments of a phi instruction may not necessarily match the predecessors of the block. We show an example here:
@@ -137,11 +133,14 @@ Definition ill_formed_phi_2 : block :=
   Block 1 [r(0) <- phi [(1, 0); (2, 1); (3, 2)]] [] Halt
 .
 Definition ill_formed_phi_1 : block :=
-  Block 0 [] [] (Jmp ill_formed_phi_2)
+  Block 0 [] [] (Jump ill_formed_phi_2)
 .
 \end{lstlisting}
 
 
 \section{Semantics}
+To help us reason about the semantics of the language we create interpreter.
 
-To help us reason about the semantics of the language we created an interpreter
+\section{Liveness Analysis}
+\section{Coloring}
+\section{SSA Destruction}
