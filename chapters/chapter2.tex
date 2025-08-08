@@ -1,0 +1,101 @@
+% Errors
+
+\chapter{Background}
+\label{cha:background}
+
+In this chapter, we present the foundational tools and concepts employed throughout this project. We begin by introducing the Coq Proof Assistant, highlighting the features that make it particularly suitable for our implementation. We then describe the Single Static Assignment (SSA) form, the intermediate representation used in our compiler, along with the necessary structural elements to make it practical. Finally, we discuss the theoretical foundations of register allocation, with particular attention to its formulation within the SSA paradigm.
+
+\section{The Coq Proof Assistant}
+
+The core of our register allocator is implemented in \textit{Coq}, an interactive proof assistant based on a dependently typed functional language known as \textit{Gallina}. While Coq is primarily used for formal verification, in this project we focus more on its computational capabilities than on the formal proofs of correctness.
+
+\subsection{Function Termination}
+
+A fundamental feature of Coq is its enforcement of termination in all function definitions. Recursive functions are typically defined using the \texttt{Fixpoint} keyword, which requires pattern matching over inductive types. Coq statically checks that, for each recursive call, there exists a structurally decreasing argument, guaranteeing termination by eventually reaching a base case.
+
+Some recursive functions, however, do not conform to this syntactic criterion. In such cases, Coq offers two common workarounds:
+
+\begin{enumerate}
+    \item \textbf{Fuel-based recursion}: This approach involves adding an artificial decreasing argument (commonly named \texttt{fuel} of type \texttt{nat}) to the function signature. The function then proceeds recursively while decrementing \texttt{fuel} at each step. Termination is guaranteed when \texttt{fuel} reaches zero. The drawback is that an upper bound on the number of iterations must be known in advance, which may be difficult to determine and, if underestimated, can lead to incomplete computations.
+    
+    \item \textbf{Using \texttt{Function} with a termination proof}: This alternative allows defining more general recursive functions while providing an explicit proof of their termination. Although more flexible, this method introduces additional proof obligations and complexity.
+\end{enumerate}
+
+In this project, we primarily adopt the fuel-based approach, assuming that appropriate bounds on the number of iterations are known for the algorithms in question.
+
+\subsection{OCaml Extraction}
+% Content to be added.
+
+\section{Single Static Assignment (SSA)}
+\label{sec:ssa}
+
+We adopt the Single Static Assignment (SSA) form as our intermediate representation, due to its structural properties that greatly simplify register allocation. An SSA-form program satisfies the following constraints:
+
+\begin{itemize}
+    \item Each variable (or virtual register) is assigned exactly once;
+    \item Every use of a variable is dominated by its unique definition.
+\end{itemize}
+
+A label $l_1$ is said to \textit{dominate} a label $l_2$ if every path from the entry point of the control flow graph (CFG) to $l_2$ passes through $l_1$.
+
+To make SSA a practical intermediate representation, we must introduce additional structures, namely the control flow graph and $\phi$-functions.
+
+\subsection{Control Flow Graphs}
+\label{subsec:cfg}
+
+To represent the control flow of programs, we employ Control Flow Graphs (CFGs). A CFG is defined as the triple $(B, CF, \textbf{start})$, where:
+
+\begin{itemize}
+    \item $B$ is the set of \textit{basic blocks}, each consisting of a sequence of instructions preceded by a $\phi$ section and terminated by a control transfer instruction (e.g., branch or jump).
+    \item $CF \subseteq B \times B$ is the control flow relation, indicating allowed transitions between blocks.
+    \item $\textbf{start} \in B$ is the designated entry point of the program.
+\end{itemize}
+
+\subsection{Phi Operations}
+\label{subsec:phi}
+
+Due to the single-assignment constraint in SSA, merging variable values from multiple control paths requires the use of \textit{$\phi$-functions}. A $\phi$-instruction has the general form:
+
+\[
+x \leftarrow \phi((y_1, b_1), (y_2, b_2), \dots, (y_n, b_n))
+\]
+
+Here, each pair $(y_i, b_i)$ indicates that the value of $y_i$ should be assigned to $x$ if the program arrives from block $b_i$. $\phi$-functions are always placed at the beginning of a basic block, and are semantically executed during the control transfer from a predecessor block.
+
+We often group multiple $\phi$-assignments into a matrix-like section:
+
+\[
+\begin{pmatrix}
+    x_1 \\ x_2 \\ \vdots \\ x_m
+\end{pmatrix}
+\leftarrow \phi
+\begin{pmatrix}
+    (y_{11}, b_1) & (y_{12}, b_2) & \dots & (y_{1n}, b_n) \\
+    (y_{21}, b_1) & (y_{22}, b_2) & \dots & (y_{2n}, b_n) \\
+    \vdots & \vdots & \ddots & \vdots \\
+    (y_{m1}, b_1) & (y_{m2}, b_2) & \dots & (y_{mn}, b_n) \\
+\end{pmatrix}
+\]
+
+An important semantic property is that all $\phi$-assignments in a block are executed \textit{in parallel}. This aspect must be carefully preserved when translating SSA code to machine code.
+
+\section{Register Allocation}
+\label{sec:ra}
+
+Register allocation is the process of assigning a potentially unbounded number of program variables to a limited number of physical registers. A well-known approach reduces this problem to graph coloring.
+
+Given a program, we construct its \textit{interference graph} $G = (V, E)$, where:
+
+\begin{itemize}
+    \item $V$ is the set of variables (or virtual registers);
+    \item $(u, v) \in E$ if variables $u$ and $v$ are simultaneously live at some program point, and therefore cannot share the same register.
+\end{itemize}
+
+A valid $k$-coloring of the interference graph, where each color represents a physical register, corresponds to a feasible register assignment for a machine with $k$ registers.
+
+\subsection{Register Allocation in SSA Form}
+
+While graph coloring is $\mathcal{NP}$-complete for arbitrary graphs, the interference graphs of programs in SSA form have a special structure: they are \textit{chordal} graphs. A chordal graph is one in which every cycle of four or more vertices has a chord, i.e., an edge connecting two non-consecutive vertices.
+
+This structural property allows optimal register allocation to be performed in polynomial time, specifically, in quadratic time, making SSA form not only more analyzable but also more efficient for code generation tasks such as register allocation.
+
