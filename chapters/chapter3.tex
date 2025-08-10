@@ -3,7 +3,7 @@
 \chapter{Implementation}
 \label{cha:implementation}
 
-In this chapter, we provide an overview of the design and implementation choices that guided the development of our register allocator. The implementation is structured in a modular way, beginning with the definition of the syntax and semantics of an intermediate language in Static Single Assignment (SSA) form. We then detail the steps required to perform register allocation, namely liveness analysis, graph coloring, and SSA destruction.
+In this chapter, we provide an overview of the design and implementation choices that guided the development of the register allocator. The implementation is structured in a modular way, beginning with the definition of the syntax and semantics of an intermediate language in Static Single Assignment (SSA) form. We then detail the steps required to perform register allocation, namely liveness analysis, graph coloring, and SSA destruction.
 
 \section{Intermediate Representation}
 \label{sec:ir}
@@ -25,21 +25,21 @@ Coq modules provide a convenient mechanism to abstract over register types that 
 
 Each instantiation of this module corresponds to a concrete intermediate representation. For virtual registers, we use the set of natural numbers, which, although bounded by Coq's runtime limits, can be treated as unbounded for our purposes.
 
-\begin{lstlisting}[language=Coq]
+\begin{alltt}
 Definition reg := nat.
-\end{lstlisting}
+\end{alltt}
 
 For physical registers, we define a finite set that corresponds to the 64-bit general-purpose registers of the x86 architecture.
 
-\begin{lstlisting}[language=Coq]
+\begin{alltt}
 Inductive preg : Type :=
   | RAX
   | RBX
   | RCX
-  ...
+  (* ... *)
 .
 Definition reg := preg.
-\end{lstlisting}
+\end{alltt}
 
 Throughout the implementation, every register is understood to be either virtual or physical depending on the phase of the compilation pipeline.
 
@@ -48,36 +48,34 @@ Throughout the implementation, every register is understood to be either virtual
 In order to perform computation our intermediate representation must be equipped with arithmetic and logic instructions.
 We start by defining the value type \texttt{val} which can be either an immediate integer, a register, or a pointer to a memory location (represented by a natural number):
 
-\begin{lstlisting}[language=Coq]
+\begin{alltt}
 Inductive val : Type :=
-| Imm (x : Z)
-| Reg (r : reg)
-| Ptr (p : nat)
-.
-\end{lstlisting}
+  | Imm (x : Z)
+  | Reg (r : reg)
+  | Ptr (p : nat).
+\end{alltt}
 
 We then define the type of expressions \texttt{expr}. These include register copies, memory loads, and arithmetic and logic operations. Expression depth is restricted to avoid unnecessary complexity and to preserve the linearity of the data structure thus reducing the complexity of the foreseen algorithms:
 
-\begin{lstlisting}[language=Coq]
+\begin{alltt}
 Inductive expr : Type :=
-| Val : val -> expr
-| Load : val -> expr
-| Add : reg -> val -> expr
-| Sub : reg -> val -> expr
-...
+  | Val : val -> expr
+  | Load : val -> expr
+  | Add : reg -> val -> expr
+  | Sub : reg -> val -> expr
+  (* ... *)
 .
-\end{lstlisting}
+\end{alltt}
 
 Binary expressions always use a register as the first operand, preventing expressions that involve only constants, since in that case the result could be computed trivially during a previous step of the compilation. Another thing to note is that, for the sake of register allocation, a differentiation between unary, binary and n-ary expressions is useless as we are only concerned with the operands of an expression (the registers) and not the operator.
 
 Finally, the type of the instructions \texttt{inst} reflects the core operations in our language. Instructions either define a register by assigning it the result of an expression, or store a value into memory:
 
-\begin{lstlisting}[language=Coq]
+\begin{alltt}
 Inductive inst : Type :=
-| Def (r : reg) (e : expr)
-| Store (v : val) (r : reg)
-.
-\end{lstlisting}
+  | Def (r : reg) (e : expr)
+  | Store (v : val) (r : reg).
+\end{alltt}
 
 The \texttt{Store} instruction is treated specially because it does not produce a result that can be assigned to a register. For this reason, it cannot be expressed as a \texttt{Def}.
 
@@ -86,17 +84,16 @@ The \texttt{Store} instruction is treated specially because it does not produce 
 In \Cref{sec:ssa} we defined phi nodes as parallel moves based on the control flow predecessor.
 We need a definition that preserves this information, to do so we start by defining the type of an argument of a phi instruction, namely \texttt{phi\_arg}. Semantically the \texttt{reg} instance is the source of the copy if the control flow comes from the \texttt{lbl} instance.
 
-\begin{lstlisting}[language=Coq]
+\begin{alltt}
 Definition phi_arg : Type := (reg * lbl).
-\end{lstlisting}
+\end{alltt}
 
 Finally we define the type of a phi instruction, this is simply an assignment of one of the possible \texttt{phi\_arg}s to a destination register \texttt{r}.
 
-\begin{lstlisting}[language=Coq]
+\begin{alltt}
 Inductive phi : Type :=
-| Phi (r : reg) (rs: list phi_arg)
-.
-\end{lstlisting}
+| Phi (r : reg) (rs: list phi_arg).
+\end{alltt}
 
 % Here, each phi_arg pairs a register with a label identifying the originating block. Initially, we experimented with a label-free control flow representation that used direct pointers to blocks. However, as we will explain later, this made the semantics unnecessarily difficult to define, leading us to prefer label-based control flow.
 
@@ -105,25 +102,22 @@ Inductive phi : Type :=
 ALU instructions and phi instructions are defined separately so that we can enforce that in basic blocks the phi section appears first, followed by ALU instructions and finally by a jump instruction.
 We define the type of the jump instruction, in mutual recursion with the block type.
 
-\begin{lstlisting}[language=Coq]
+\begin{alltt}
 CoInductive block : Type :=
   | Block (l : lbl) (ps : list phi) (is : list inst) (j : jinst)
-
 with jinst : Type :=
   | CondJump : cond -> reg -> val -> block -> block -> jinst
   | Jump : block -> jinst
-  | Ret : reg -> jinst
-.
-\end{lstlisting}
+  | Ret : reg -> jinst.
+\end{alltt}
 
-Control flow is encoded directly using block references instead of labels, preventing accidental jumps to nonexistent blocks. This definition naturally forms a control-flow graph (CFG), where blocks are nodes and jump instructions define the edges.
+Control flow is encoded directly using block references instead of labels, preventing accidental jumps to nonexistent blocks. This definition naturally forms a control-flow graph, where blocks are nodes and jump instructions define the edges.
 
 Finally since a CFG as we described in \Cref{subsec:cfg} is a set of blocks where we identify a start block and a control flow relation, it is sufficient to provide the following definition, where the starting point of the CFG is the first block we encounter during a visit and the blocks set of the CFG is the set of blocks reachable from the first block.
 
-\begin{lstlisting}[language=Coq]
+\begin{alltt}
 Definition program : Type := block.
-\end{lstlisting}
-
+\end{alltt}
 
 \subsection{Limitations}
 
@@ -131,37 +125,33 @@ Despite our efforts to use Coq's type system to rule out incorrect programs, cer
 
 For instance, multiple assignments to the same register or the use of undefined registers are still possible:
 
-\begin{lstlisting}[language=Coq]
+\begin{alltt}
 Definition double_assignment : block :=
-Block 0 [] [
-  r(1) <- i(0);
-  r(1) <- i(1)
-]
-Halt
-.
+  Block 0 [] [
+    r(1) <- i(0);
+    r(1) <- i(1)
+  ]
+  (ret r(1)).
 
 Definition undefined_variable : block :=
-  Block 0 [] [r(1) <- r(0)] Halt
-.
-\end{lstlisting}
+  Block 0 [] [r(1) <- r(0)] (ret r(1)).
+\end{alltt}
 
 Similarly, labels are not globally unique, which can lead to conflicting block labels:
 
-\begin{lstlisting}[language=Coq]
-Definition double_lbl_2 : block := Block 0 [] [] Halt.
-Definition double_lbl_1 : block := Block 0 [] [] (Jump double_lbl_2).
-\end{lstlisting}
+\begin{alltt}
+CoFixpoint double_lbl_1 : block := Block 0 [] [] (Jump double_lbl_2)
+  with double_lbl_2 : block := Block 0 [] [] (Jump double_lbl_1).
+\end{alltt}
 
 Finally, phi instructions may include inconsistent or invalid arguments. For example, the number or identity of predecessors listed in a phi instruction may not match the actual control-flow structure:
 
-\begin{lstlisting}[language=Coq]
+\begin{alltt}
 Definition ill_formed_phi_2 : block :=
-  Block 1 [r(0) <- phi [(1, 0); (2, 1); (3, 2)]] [] Halt
-.
+  Block 1 [r(0) <- phi [(1, 0); (2, 1); (3, 2)]] [] (ret r(0)).
 Definition ill_formed_phi_1 : block :=
-  Block 0 [] [] (Jump ill_formed_phi_2)
-.
-\end{lstlisting}
+  Block 0 [] [] (Jump ill_formed_phi_2).
+\end{alltt}
 
 Although these issues cannot be resolved by the type system alone, they are caught during further semantic analysis or preprocessing phases.
 
@@ -171,16 +161,15 @@ We now implement a small-step interpreter for our intermediate representation, h
 The first one is to clearly state the semantics of our language. The second one is that, in order to test our register allocator, we will compare the result of a program executed on the interpreter virtual machine with the result of the same program executed on bare hardware, if the two results match this will suggest that the semantics of the program are preserved even after the register allocation.
 The definition of the virtual machine is straighforward as its components are just the register file, implemented as a map from registers to integers and the memory, implemented as list of integers.
 
-\begin{lstlisting}[language=Coq]
+\begin{alltt}
 Inductive vm : Type :=
-  | Vm : (reg -> Z) -> list Z -> vm
-.
-\end{lstlisting}
+  | Vm : (reg -> Z) -> list Z -> vm.
+\end{alltt}
 
 Now the only thing left is to define a function that simulates the execution of a program, ideally we would want that function to have type \texttt{vm -> program -> vm} taking the initial state of the virtual machine and the program as inputs and returning the new state of the virtual machine.
-Unfortunately, as we mentioned in \cref{subsec:funterm}, Coq does not allow for the definition of functions of which we cannot prove termination, and proving it for this function would entail solving the halting problem. We thus resort to using fuel based recursion for this case.
+Unfortunately, as we mentioned in \Cref{subsec:funterm}, Coq does not allow for the definition of functions of which we cannot prove termination, and proving it for this function would entail solving the halting problem. We thus resort to using fuel based recursion for this case.
 
-\begin{lstlisting}[language=Coq]
+\begin{alltt}
 Fixpoint run (m : vm) (p : program) (fuel : nat) : vm :=
   match p, fuel with
   | _, O => m
@@ -195,13 +184,12 @@ Fixpoint run (m : vm) (p : program) (fuel : nat) : vm :=
     | Jump b1 => run (run_phis m p b1) b1 fuel'
     | Ret r => set_reg m 0 (get_reg m r)
     end
-  end
-.
-\end{lstlisting}
+  end.
+\end{alltt}
 
 The algorithm works this way: if we are out of fuel we terminate and we return the current state of the virtual machine, otherwise we proceed with the computation.
-We run the body of instructions of the current block with the function \texttt{run\_insts}, thus creating a new state of the virtual machine. We then treat each jump instruction differently, in the case of a conditional jump we evaluate the condition with the \texttt{eval\_cond} function, in the other two cases no evaluation is needed. Finally, before jumping we execute the phi instructions of the next block, to do so we call the \texttt{run\_phis} function  passing as arguments the virtual machine, the current block and the successor block.
-We continue with the computation until either we run out of fuel or we reach the \texttt{Ret} instruction, saving the result of the program to register zero.
+We run the body of instructions of the current block with the function \texttt{run\_insts}, thus creating a new state of the virtual machine. We then treat each jump instruction differently, in the case of a conditional jump we evaluate the condition with the \texttt{eval\_cond} function, in the other two cases no evaluation is needed. Finally, before jumping to the next block we execute the its phi instructions, to do so we call the \texttt{run\_phis} function  passing as arguments the virtual machine, the current block and the successor block.
+We continue with the computation until we either run out of fuel or we reach the \texttt{Ret} instruction, saving the result of the program to register zero.
 
 \section{Liveness Analysis}
 
@@ -221,7 +209,6 @@ Since in our language instructions can be of three different kinds we define dif
 \subsection{ALU and Jump Instructions}
 
 We can compute the live sets for the ALU instructions using the following dataflow equations:
-
 \begin{align*}
   \texttt{live\_in[i]} &= \texttt{use[i]} \cup (\texttt{live\_out[i]} \setminus \texttt{def[i]}) \\
   \texttt{live\_out[i]} &= \bigcup \limits_{\texttt j \in \texttt{succ[i]}} \texttt{live\_in[j]}
@@ -229,18 +216,20 @@ We can compute the live sets for the ALU instructions using the following datafl
 
 Since the computation is done backwards we start with the \texttt{live\_out[i]} set, which must contain the variables that are required by the successors of \texttt i. The
 \texttt{live\_in[i]} set must instead contain the variables required by \texttt i, identified by \texttt{use[i]} and the variables that are required by the next instructions, identified by \texttt{live\_out[i]} $\setminus$ \texttt{def[i]}.
-Here there are some things to note, first of all that the set $\texttt{live\_out[i\_n]} = \emptyset$ where \texttt{i\_n} is the last instruction of the program, since no variables are live after the program ends, this constitutes the entry point for our algorithm.
+Here there are some things to note, first of all that the set $\texttt{live\_out[i\_n]} = \emptyset$ where \texttt{i\_n} is the last instruction of the program, since no variables are live after the program ends, we start from this assumption at the beginning of the algorithm.
 Then for jump instructions we can simplify the first dataflow equation by removeing \texttt{def[i]} as jump instructions never define variables.
 
 \subsection{Phi Instructions}
 
+Because of the different semantics of phi instructions we must define their dataflow equations separately. In particular we define the liveness information of the whole phi section instead of for single instructions, this is because, as was explained in \Cref{subsec:phi}, phis are executed parallelly.
+We compute:
+\begin{align*}
+  \texttt{live\_in[ps]} &= \texttt{phi\_defs[ps]} \cup \texttt{live\_out[ps]} \\
+  \texttt{live\_out[ps]} &= \bigcup \limits_{\texttt j \in \texttt{succ[ps]}} \texttt{live\_in[j]}
+\end{align*}
+where \texttt{phi\_defs[ps]} contains the variables defined in the phi section.
 
-
-\begin{lstlisting}[language=Coq]
-Inductive instinfo : Type :=
-  | InstInfo (live_out: set reg) (live_in: set reg)
-.
-\end{lstlisting}
+Starting again with \texttt{live\_out[ps]}, we define it as the the union of the variables that are live before the first ALU instruction of the block. \texttt{live\_in[ps]} is instead the set of variables that are defined in the phi section together with the variables that are required after the phi section, intuitively the variables in \texttt{phi\_defs[ps]} are already defined before reaching the block since their execution happens during the jump.
 
 \section{Coloring}
 
