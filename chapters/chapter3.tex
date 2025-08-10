@@ -188,7 +188,7 @@ Fixpoint run (m : vm) (p : program) (fuel : nat) : vm :=
 \end{alltt}
 
 The algorithm works this way: if we are out of fuel we terminate and we return the current state of the virtual machine, otherwise we proceed with the computation.
-We run the body of instructions of the current block with the function \texttt{run\_insts}, thus creating a new state of the virtual machine. We then treat each jump instruction differently, in the case of a conditional jump we evaluate the condition with the \texttt{eval\_cond} function, in the other two cases no evaluation is needed. Finally, before jumping to the next block we execute the its phi instructions, to do so we call the \texttt{run\_phis} function  passing as arguments the virtual machine, the current block and the successor block.
+We run the body of instructions of the current block with the function \texttt{run\_insts}, thus creating a new state of the virtual machine. We then treat each jump instruction differently, in the case of a conditional jump we evaluate the condition with the \texttt{eval\_cond} function, in the other two cases no evaluation is needed. Finally, before jumping to the next block we execute its phi instructions, to do so we call the \texttt{run\_phis} function  passing as arguments the virtual machine, the current block and the successor block.
 We continue with the computation until we either run out of fuel or we reach the \texttt{Ret} instruction, saving the result of the program to register zero.
 
 \section{Liveness Analysis}
