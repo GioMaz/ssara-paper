@@ -10,6 +10,7 @@ In this chapter, we present the foundational tools and concepts employed through
 The core of our register allocator is implemented in \textit{Coq}, an interactive proof assistant based on a dependently typed functional language known as \textit{Gallina}. While Coq is primarily used for formal verification, in this project we focus more on its computational capabilities than on the formal proofs of correctness.
 
 \subsection{Function Termination}
+\label{subsec:funterm}
 
 A fundamental feature of Coq is its enforcement of termination in all function definitions. Recursive functions are typically defined using the \texttt{Fixpoint} keyword, which requires pattern matching over inductive types. Coq statically checks that, for each recursive call, there exists a structurally decreasing argument, guaranteeing termination by eventually reaching a base case.
 
@@ -54,30 +55,30 @@ To represent the control flow of programs, we employ Control Flow Graphs (CFGs).
 \subsection{Phi Operations}
 \label{subsec:phi}
 
-Due to the single-assignment constraint in SSA, merging variable values from multiple control paths requires the use of \textit{$\phi$-functions}. A $\phi$-instruction has the general form:
+% Due to the single-assignment constraint in SSA, merging variable values from multiple control paths requires the use of \textit{$\phi$-functions}. A $\phi$-instruction has the general form:
 
-\[
-x \leftarrow \phi((y_1, b_1), (y_2, b_2), \dots, (y_n, b_n))
-\]
+% \[
+% x \leftarrow \phi((y_1, b_1), (y_2, b_2), \dots, (y_n, b_n))
+% \]
 
-Here, each pair $(y_i, b_i)$ indicates that the value of $y_i$ should be assigned to $x$ if the program arrives from block $b_i$. $\phi$-functions are always placed at the beginning of a basic block, and are semantically executed during the control transfer from a predecessor block.
+% Here, each pair $(y_i, b_i)$ indicates that the value of $y_i$ should be assigned to $x$ if the program arrives from block $b_i$. $\phi$-functions are always placed at the beginning of a basic block, and are semantically executed during the control transfer from a predecessor block.
 
-We often group multiple $\phi$-assignments into a matrix-like section:
+% We often group multiple $\phi$-assignments into a matrix-like section:
 
-\[
-\begin{pmatrix}
-    x_1 \\ x_2 \\ \vdots \\ x_m
-\end{pmatrix}
-\leftarrow \phi
-\begin{pmatrix}
-    (y_{11}, b_1) & (y_{12}, b_2) & \dots & (y_{1n}, b_n) \\
-    (y_{21}, b_1) & (y_{22}, b_2) & \dots & (y_{2n}, b_n) \\
-    \vdots & \vdots & \ddots & \vdots \\
-    (y_{m1}, b_1) & (y_{m2}, b_2) & \dots & (y_{mn}, b_n) \\
-\end{pmatrix}
-\]
+% \[
+% \begin{pmatrix}
+%     x_1 \\ x_2 \\ \vdots \\ x_m
+% \end{pmatrix}
+% \leftarrow \phi
+% \begin{pmatrix}
+%     (y_{11}, b_1) & (y_{12}, b_2) & \dots & (y_{1n}, b_n) \\
+%     (y_{21}, b_1) & (y_{22}, b_2) & \dots & (y_{2n}, b_n) \\
+%     \vdots & \vdots & \ddots & \vdots \\
+%     (y_{m1}, b_1) & (y_{m2}, b_2) & \dots & (y_{mn}, b_n) \\
+% \end{pmatrix}
+% \]
 
-An important semantic property is that all $\phi$-assignments in a block are executed \textit{in parallel}. This aspect must be carefully preserved when translating SSA code to machine code.
+% An important semantic property is that all $\phi$-assignments in a block are executed \textit{in parallel}. This aspect must be carefully preserved when translating SSA code to machine code.
 
 \section{Register Allocation}
 \label{sec:ra}
