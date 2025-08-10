@@ -229,11 +229,39 @@ We compute:
 \end{align*}
 where \texttt{phi\_defs[ps]} contains the variables defined in the phi section.
 
-Starting again with \texttt{live\_out[ps]}, we define it as the the union of the variables that are live before the first ALU instruction of the block. \texttt{live\_in[ps]} is instead the set of variables that are defined in the phi section together with the variables that are required after the phi section, intuitively the variables in \texttt{phi\_defs[ps]} are already defined before reaching the block since their execution happens during the jump.
+Starting again with \texttt{live\_out[ps]}, we define it as the the union of the variables that are live before the first ALU instruction of the block. \texttt{live\_in[ps]} is instead the set of variables that are defined in the phi section together with the variables that are required after the phi section, intuitively the variables in \texttt{phi\_defs[ps]} are already defined before reaching the start of the block since their execution happens during the jump.
+
+\subsection{Liveness Analysis Function}
+
+We take into consideration the previously defined dataflow equations to create a function that performs liveness analysis over the whole control flow graph.
+
+\begin{alltt}
+Fixpoint analyze_program (p : program) (fuel : nat) : ProgramInfo.dict * set reg :=
+  match fuel with
+  | O =>
+    let (iis, live_in) := analyze_block p nil in
+    (programinfo_insert ProgramInfo.empty (get_lbl p) (BlockInfo iis), live_in)
+
+  | S fuel' =>
+    let bs := successors p in
+    let results := map (fun p => analyze_program p fuel') bs in
+    let (pi, live_out) :=
+      fold_left
+        (fun '(pi_acc, live_out) '(pi_succ, live_in) =>
+          (programinfo_merge pi_acc pi_succ, regs_union live_out live_in))
+        results
+        (ProgramInfo.empty, nil)
+    in
+    let live_out := regs_union live_out (phi_uses p) in
+    let (iis, live_in) := analyze_block p live_out in
+    let pi := programinfo_insert pi (get_lbl p) (BlockInfo iis) in
+    (pi, regs_diff live_in (phi_defs (get_phis p)))
+  end.
+\end{alltt}
 
 \section{Coloring}
 
-Based on the liveness information, we construct an interference graph and apply a graph coloring algorithm to assign physical registers. We ensure the algorithm terminates and produces a valid coloring, providing a proof in Coq.
+
 
 \section{SSA Destruction}
 
