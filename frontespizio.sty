@@ -74,7 +74,7 @@
 \newcommand{\AnnoAccademico}[1]{\newcommand{\@AnnoAccademico}{#1}}
 \newcommand{\Logo}[1]{\newcommand{\@Logo}{#1}}
 \newcommand{\Relatore}[1]{\listadd{\@relatorilist}{#1}}
-%\newcommand{\Correlatore}[1]{\listadd{\@correlatorilist}{#1}}
+\newcommand{\Correlatore}[1]{\listadd{\@correlatorilist}{#1}}
 
 \newcommand{\@Candidato}{}
 \newcommand{\Candidato}[1]{\renewcommand{\@Candidato}{#1}}
@@ -196,9 +196,9 @@
                 \textbf{\@RelatoreLabel}\par
                 \myprintlist{\@relatorilist} 
 
-                %\vspace{\@relandcorrelsep}
-                %\textbf{\@CorrelatoreLabel}\par
-                %\myprintlist{\@correlatorilist}
+                \vspace{\@relandcorrelsep}
+                \textbf{\@CorrelatoreLabel}\par
+                \myprintlist{\@correlatorilist}
             \end{minipage}\hfill%
             \begin{minipage}[t]{.45\textwidth}
                 \normalsize
@@ -212,7 +212,7 @@
             \ifdefined\@DataEsame 
                 \vspace{10mm}
                 \raggedright
-                {\large\textsc{Data della Discussione:} \@DataEsame}
+                {\large\textsc{Date of discussion:} \@DataEsame}
                 \rule{\textwidth}{0.5mm}
             \fi
         \end{center}
