@@ -36,8 +36,6 @@ The intermediate representation utilizes the Single Static Assignment form due t
     \item Every use of a variable is dominated by its unique definition.
 \end{itemize}
 
-To make our SSA intermediate representation able to express most of the programs, we must introduce additional features such as the concept of a control flow.
-
 \subsection{Control Flow Graphs}
 \label{subsec:cfg}
 
@@ -90,20 +88,51 @@ We may also find multiple $\phi$ instructions grouped together at the beginning 
 \section{Register Assignment}
 \label{sec:ra}
 
-Register assignment is the process of assigning a potentially unbounded number of program variables to a limited number of physical registers. A well-known approach reduces this problem to graph coloring.
+Register assignment is the process of assigning a potentially unbounded number of program variables to a limited number of physical registers. A well-known approach reduces this problem to graph coloring of the interference graph.
 
-Given a program, we construct its interference graph $G = (V, E)$ where:
+\begin{definition}[Interference Graph]\label{def:ig}
+    Given a program, a graph $G = (V, E)$ where $V$ is the set of variables of the program and $\{ u, v \} \in E$, iff variables $u$ and $v$ are live at the same time for at least one instruction of the program.
+\end{definition}
 
-\begin{itemize}
-    \item $V$ is the set of variables;
-    \item while $E$ is the set of edges such that $\{ u, v \} \in E$ iff the variables $u$ and $v$ are simultaneously live at some program point, and therefore cannot share the same register.
-\end{itemize}
-
-A valid $k$-coloring of the interference graph, where each color represents a physical register, corresponds to a feasible register assignment for a machine with $k$ registers.
+It is immediate to see that a $k$-coloring of the interference graph, where each color represents a physical register, corresponds to a feasible register assignment for a machine with $k$ registers.
 
 \subsection{Register Assignment in SSA Form}
 \label{subsec:ssara}
 
-While graph coloring is $\mathcal{NP}$-complete for arbitrary graphs, the interference graphs of programs in SSA form have a special structure: they are \textit{chordal} graphs. A chordal graph is one in which every cycle of four or more vertices has a chord, i.e., an edge connecting two non-consecutive vertices.
+Before talking about register assignment in SSA form we need to define some properties of nodes and graphs.
 
-This structural property allows optimal register assignment to be performed in polynomial time making SSA form not only more analyzable but also more efficient for code generation tasks such as register assignment.
+\begin{definition}[Simplicial node]\label{def:simplicial}
+    Given a graph $G = (V, E)$, a node $u \in E$ is simplicial, iff the neighborhood of $u$ is a clique.
+\end{definition}
+
+\begin{definition}[Chordal graph]\label{def:chordal}
+    A graph for which there exists a perfect elimination ordering, that is, there exists a simplicial node such that, if we remove that node the graph is still chordal.
+\end{definition}
+
+Another way we can express \Cref{def:chordal} is the following, it will become especially useful during the verification phase of our project.
+
+\[
+\inferrule*[right=ChordalEmpty]{
+}{
+    \text{chordal} \; \varnothing
+}
+\]
+
+\[
+\inferrule*[right=ChordalStep]{
+    \exists u \; \text{simplicial} \; G \; u \\
+    \text{chordal} \; (G \setminus \{ u \})
+}{
+    \text{chordal } G
+}
+\]
+
+The reason why chordal graphs are particularly appealing is that, while graph coloring for normal graphs is an NP-complete problem, there exist coloring algorithms for this particular subset of graphs that run in polynomial time.
+
+\begin{theorem}[Chordality]
+    The interference graph of a program in SSA form is chordal.
+\end{theorem}
+
+% TODO: mention the author of proof at https://compilers.cs.uni-saarland.de/papers/ifg_ssa.pdf
+
+While register assignment is NP-complete for an arbitrary representation, registers in SSA form representations are assignable in polynomial time.

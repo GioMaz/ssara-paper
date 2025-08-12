@@ -3,7 +3,7 @@
 \chapter{Introduction}
 \label{cha:intro}
 
-Register assignment is the process of assigning each variable used in a program to one of the physical registers available on a target architecture. While high-level programming languages such as OCaml  or C allow developers to define an arbitrary number of variables to simplify software development, actual hardware architectures impose strict limits. For example, the x86 architecture provides only 16 general-purpose registers. The main goal of register assignment is to map these virtual registers to physical ones in a way that preserves the original semantics of the program.
+Register assignment is the process of assigning each variable used in a program to one of the physical registers available on a target architecture. While high-level programming languages such as C and OCaml allow developers to define an arbitrary number of variables to simplify software development, actual hardware architectures impose strict limits. For example, the x86 architecture provides only 16 general-purpose registers. The main goal of register assignment is to map these virtual registers to physical ones in a way that preserves the original semantics of the program.
 
 Throughout the course of the thesis we will present the following contributions:
 \begin{itemize}
@@ -17,7 +17,7 @@ Throughout the course of the thesis we will present the following contributions:
 The structure of the thesis is as follows:
 
 \begin{itemize}
-\item In \Cref{sec:ir}, we describe the intermediate language in SSA form, during this initial phase the main goal is to define an intermediate representation that makes illegal SSA states irrepresentable, we will also make some considerations on the feasability of this task. At the same we want to define a data structure that is suitable for visits to extract liveness information and perform other tasks up to code generation;
+\item In \Cref{sec:jair}, we describe the intermediate language in SSA form, during this initial phase the main goal is to define an intermediate representation that makes illegal SSA states irrepresentable, we will also make some considerations on the feasability of this task. At the same we want to define a data structure that is suitable for visits to extract liveness information and perform other tasks up to code generation;
 
 \item In \Cref{sec:interpreter}, we reason about the semantics for this intermediate language by defining a virtual machine along with a function to simulate the indented behavior of programs on real hardware;
 
