@@ -3,7 +3,7 @@
 \chapter{Implementation}
 \label{cha:implementation}
 
-In this chapter, we provide an overview of the design and implementation choices that guided the development of the register allocator and the underlying language JAIR. The implementation is structured in a modular way, beginning with the definition of the syntax and semantics of the language. We then detail the steps required to perform register allocation, namely liveness analysis, graph coloring, and SSA destruction.
+In this chapter, we provide an overview of the design and implementation choices that guided the development of the register assignment pipeline and the underlying language JAIR. The implementation is structured in a modular way, beginning with the definition of the syntax and semantics of the language. We then detail the steps required to perform register assignment, namely liveness analysis, graph coloring, and SSA destruction.
 
 \section{JAIR}
 \label{sec:jair}
@@ -12,7 +12,7 @@ The primary goal in defining the syntax of JAIR is to leverage Coq’s type syst
 
 \subsection{Registers}
 
-Our implementation uses two kinds of registers: virtual registers in the earlier phases of register allocation, and physical registers in the final phase. To support both use cases, we define the syntax of our intermediate language generically over the types of registers.
+Our implementation uses two kinds of registers: virtual registers in the earlier phases of register assignment, and physical registers in the final phase. To support both use cases, we define the syntax of our intermediate language generically over the types of registers.
 
 In order to do so we need to provide the following parameters to the generic implementation:
 \begin{itemize}
@@ -23,13 +23,13 @@ In order to do so we need to provide the following parameters to the generic imp
 
 Coq modules provide a convenient mechanism to abstract over register types that also works well with extraction.
 
-Each instantiation of this module corresponds to a concrete intermediate representation. For virtual registers, we use the set of natural numbers, which, although bounded by Coq's runtime limits, can be treated as unbounded for our purposes.
+Each instantiation of this module yields a concrete intermediate representation. For virtual registers, we use the set of natural numbers, which, although bounded by Coq's runtime limits, can be treated as unbounded for our purposes.
 
 \begin{alltt}
 Definition vreg := nat.
 \end{alltt}
 
-For physical registers, we define a finite set that corresponds to the 64-bit general-purpose registers of the x86 architecture.
+For physical registers, we define a finite set that corresponds to the 64-bit general-purpose registers of the x86-64 architecture.
 
 \begin{alltt}
 Inductive preg : Type :=
@@ -44,10 +44,10 @@ Throughout the implementation, every register is understood to be either virtual
 
 \subsection{Labels}
 
-Initially we opted for a labelless representation of basic blocks.
-But then, later in the project we saw the necessity of introducing them for this specific reason: the $\phi$ instructions require labels to identify the incoming control flow, since predecessors of a basic blocks are not ordered. Without labels a $\phi$ instruction would not know which one of the predecessors each variable is bound to.
+Initially, we opted for a labelless representation of basic blocks.
+Later in the project we saw the necessity of introducing them for this specific reason: the $\phi$ instructions require labels to identify the incoming control flow, since predecessors of a basic blocks are not ordered. Without labels a $\phi$ instruction would not know which one of the predecessors each variable is bound to.
 
-An alternative solution would be (since SSA programs only define variables only one) to go back in the control flow to find which of the arguments of the $\phi$ instruction is defined. This second approach turned out to be too complicated, so we decided to stick with the label implementation, at cost of introducing some possible inconsistencies of which we will talk later in \Cref{subsec:limitations}.
+An alternative solution would be (since SSA programs only define variables only one) to go back in the control flow to find which of the arguments of the $\phi$ instruction is defined. This approach proved too complicated, so we adopted labels, at the cost of introducing possible inconsistencies discussed in \Cref{subsec:limitations}.
 
 \begin{alltt}
 Inductive lbl : Type :=
@@ -70,7 +70,7 @@ Inductive val : Type :=
   | Ptr (p : nat).
 \end{alltt}
 
-We then define the type of expressions \texttt{expr}. These include register copies, memory loads, and arithmetic and logic operations. Expression depth is restricted to avoid unnecessary complexity and to preserve the linearity of the data structure thus reducing the complexity of the foreseen algorithms:
+We then define the type of expressions \texttt{expr}. These include register copies, memory loads, and arithmetic and logic operations. Expression depth is restricted to avoid unnecessary complexity and to preserve the linearity of the data structure, thus reducing the complexity of the foreseen algorithms:
 
 \begin{alltt}
 Inductive expr : Type :=
@@ -82,7 +82,7 @@ Inductive expr : Type :=
 .
 \end{alltt}
 
-Binary expressions always use a register as the first operand, preventing expressions that involve only constants, since in that case the result could be computed trivially during a previous step of the compilation. Another thing to note is that, for the sake of register allocation, a differentiation between unary, binary and n-ary expressions is useless as we are only concerned with the operands of an expression (the registers) and not the operator.
+Binary expressions always use a register as the first operand, preventing expressions that involve only constants, since in that case the result could be computed trivially during a previous step of the compilation. Another thing to note is that, for the sake of register assignment, a differentiation between unary, binary and n-ary expressions is unnecessary, as we are only concerned with the operands of an expression (the registers) and not the operator.
 
 Finally, the type of the instructions \texttt{inst} reflects the core operations in our language. Instructions either define a register by assigning it the result of an expression, or store a value into memory:
 
@@ -134,33 +134,52 @@ Finally since a CFG as we described in \Cref{subsec:cfg} is a set of blocks wher
 Definition program : Type := block.
 \end{alltt}
 
-The following is an example of a function that calculates the fibonacci of twelve written in JAIR, we show the corresponding program displayed in a general SSA form representation in \Cref{fig:example-jair}.
+The following is an example of a function that calculates the Fibonacci of twelve, written in JAIR. The corresponding program is shown in a general SSA form representation in \Cref{fig:example-jair}.
 
 \begin{alltt}
-Definition example_block_3 : block :=
-  Block (Normal 3) [] [] (ret r(6)).
+Block (Normal 3)
+  ret r(6).
 
-CoFixpoint example_block_2 : block :=
-  Block (Normal 2) [
-    r(3) <- phi [(0, Normal 1); (4, Normal 2)];
-    r(4) <- phi [(1, Normal 1); (6, Normal 2)];
-    r(5) <- phi [(2, Normal 1); (7, Normal 2)]
-  ] [
-    r(6) <- r(4) + r(3);
-    r(7) <- r(5) - i(1)
-  ] (
-    if r(7) = i(1) then example_block_3 else example_block_2
-  ).
+Block (Normal 2)
+  r(3) <- phi [(0, Normal 1); (4, Normal 2)]
+  r(4) <- phi [(1, Normal 1); (6, Normal 2)]
+  r(5) <- phi [(2, Normal 1); (7, Normal 2)]
+  r(6) <- r(4) + r(3)
+  r(7) <- r(5) - i(1)
+  if r(7) = i(1) then (Normal 3) else (Normal 2).
 
-Definition example_block_1 : block :=
-  Block (Normal 1) [] [
-    r(0) <- i(0);  (* Second block *)
-    r(1) <- i(1);  (* First block *)
-    r(2) <- i(12)  (* Iterator*)
-  ] (
-    Jump example_block_2
-  ).
+Block (Normal 1)
+  r(0) <- i(0)
+  r(1) <- i(1)
+  r(2) <- i(12)
+  Jump (Normal 2).
 \end{alltt}
+
+% \begin{alltt}
+% Definition example_block_3 : block :=
+%   Block (Normal 3) [] [] (ret r(6)).
+
+% CoFixpoint example_block_2 : block :=
+%   Block (Normal 2) [
+%     r(3) <- phi [(0, Normal 1); (4, Normal 2)];
+%     r(4) <- phi [(1, Normal 1); (6, Normal 2)];
+%     r(5) <- phi [(2, Normal 1); (7, Normal 2)]
+%   ] [
+%     r(6) <- r(4) + r(3);
+%     r(7) <- r(5) - i(1)
+%   ] (
+%     if r(7) = i(1) then example_block_3 else example_block_2
+%   ).
+
+% Definition example_block_1 : block :=
+%   Block (Normal 1) [] [
+%     r(0) <- i(0);  (* Second block *)
+%     r(1) <- i(1);  (* First block *)
+%     r(2) <- i(12)  (* Iterator*)
+%   ] (
+%     Jump example_block_2
+%   ).
+% \end{alltt}
 
 \begin{figure}[ht]
     \centering
@@ -177,7 +196,7 @@ Definition example_block_1 : block :=
     \draw[->] ([xshift=10pt]loop.south) to[out=315, in=45, looseness=4] ([xshift=10pt]loop.north);
     \draw[->] (loop) -- (end);
     \end{tikzpicture}
-    \caption{Fibonacci of 12 in a general SSA form representation}
+    \caption{Fibonacci of twelve in general SSA form representation}
     \label{fig:example-jair}
 \end{figure}
 
@@ -190,30 +209,30 @@ For instance, multiple assignments to the same register or the use of undefined 
 
 \begin{alltt}
 Definition double_assignment : block :=
-  Block 0 [] [
+  Block (Normal 0) [] [
     r(1) <- i(0);
     r(1) <- i(1)
   ]
   (ret r(1)).
 
 Definition undefined_variable : block :=
-  Block 0 [] [r(1) <- r(0)] (ret r(1)).
+  Block (Normal 0) [] [r(1) <- r(0)] (ret r(1)).
 \end{alltt}
 
 Similarly, labels are not globally unique, which can lead to conflicting block labels:
 
 \begin{alltt}
-CoFixpoint double_lbl_1 : block := Block 0 [] [] (Jump double_lbl_2)
-  with double_lbl_2 : block := Block 0 [] [] (Jump double_lbl_1).
+CoFixpoint double_lbl_1 : block := Block (Normal 0) [] [] (Jump double_lbl_2)
+  with double_lbl_2 : block := Block (Normal 0) [] [] (Jump double_lbl_1).
 \end{alltt}
 
 Finally, $\phi$ instructions may include inconsistent or invalid arguments. For example, the number or identity of predecessors listed in a $\phi$ instruction may not match the actual control-flow structure:
 
 \begin{alltt}
 Definition ill_formed_phi_2 : block :=
-  Block 1 [r(0) <- phi [(1, 0); (2, 1); (3, 2)]] [] (ret r(0)).
+  Block (Normal 1) [r(1) <- phi [(0, 0);]] [] (ret r(0)).
 Definition ill_formed_phi_1 : block :=
-  Block 0 [] [] (Jump ill_formed_phi_2).
+  Block (Normal 0) [] [] (Jump ill_formed_phi_2).
 \end{alltt}
 
 Although these issues cannot be resolved by the type system alone, they are caught during further semantic analysis or preprocessing phases.
@@ -222,15 +241,15 @@ Although these issues cannot be resolved by the type system alone, they are caug
 \label{sec:jair-int}
 
 We now implement a small-step interpreter for our intermediate representation, here we have two goals.
-The first one is to clearly state the semantics of JAIR. The second one is that, in order to test our register allocator, we will compare the result of a program executed on the interpreter virtual machine with the result of the same program executed on bare hardware, if the two results match this will suggest that the semantics of the program are preserved even after the register allocation.
-The definition of the virtual machine is straighforward as its components are just the register file, implemented as a map from registers to integers and the memory, implemented as list of integers.
+The first one is to clearly state the semantics of JAIR. The second one is that, in order to test register assignemnt, we will compare the result of a program executed on the interpreter virtual machine with the result of the same program executed on bare hardware, if the two results match this will suggest that the semantics of the program are preserved even after register assignment.
+The definition of the virtual machine is straightforward as its components are just the register file, implemented as a map from registers to integers and the memory, implemented as list of integers.
 
 \begin{alltt}
 Inductive vm : Type :=
   | Vm : (reg -> Z) -> list Z -> vm.
 \end{alltt}
 
-Now the only thing left is to define a function that simulates the execution of a program, ideally we would want that function to have type \texttt{vm -> program -> vm} taking the initial state of the virtual machine and the program as inputs and returning the new state of the virtual machine.
+The only remaining task is to define a function that simulates program execution, ideally we would want that function to have type \texttt{vm -> program -> vm} taking the initial state of the virtual machine and the program as inputs and returning the new state of the virtual machine.
 Unfortunately, as we mentioned in \Cref{subsec:funterm}, Coq does not allow for the definition of functions of which we cannot prove termination, and proving it for this function would entail solving the halting problem. We thus resort to using fuel based recursion for this case.
 
 \begin{alltt}
@@ -320,14 +339,22 @@ Starting again with \texttt{live\_out[ps]}, we define it as the the union of the
 %   end.
 % \end{alltt}
 
-\section{Coloring}
-\label{sec:coloring}
+\section{Register Assignment}
+\label{sec:ra}
 
-Now that we extracted the liveness information from our CFG we use it to build the interference graph.
+As explained in \Cref{subsec:ssara} register assignment is considered equivalent to the task of graph coloring of the interference graph.
+Before starting with the coloring let's keep in mind that by \Cref{def:ig} a chordal graph is a graph for which there exists a perfect elimination ordering, that is, there exists a simplicial node such that, if we remove that node the graph is still chordal and, the perfect elimination ordering is then the ordering in which the nodes are removed.
+To perform the coloring we then proceed this way:
+\begin{itemize}
+  \item We use the liveness information to build the interference graph
+  \item We iteratively remove the simplicial nodes from the interference graph obtaining a perfect elimination ordering;
+  \item Following the order identified by reversing the PEO, we reinsert the nodes into the interference graph and, at the same time, we color the nodes with a color that is not already taken by their (partially colored) neighborhoods
+\end{itemize}
 
 \subsection{Interference Graph Construction}
 
-The reasoning behind the creation of the interference graph is straightforward, we go through every live set computed in the previous step and we create a clique containing its elements. This follows intuitively by the fact that if two variables are live in the same instruction then they interfere.
+Now that we extracted the liveness information from our CFG we use it to build the interference graph.
+The reasoning behind the creation of the interference graph is straightforward, we go through every live set computed in the previous step and we create a clique containing its elements. This follows intuitively by the fact that if two variables are live in the same instruction then they interfere as per \Cref{def:ig}.
 
 The function that does so is defined as follows:
 
@@ -345,11 +372,124 @@ Definition get_ig (pi : ProgramInfo.dict) : InterfGraph.dict :=
 
 Where \texttt{ig\_insert\_instinfos} is a function that given an interference graph and a list of live sets returns a graph where a clique containing the elements of the set is added for each element of the list.
 
-\subsection{Coloring}
+\subsection{Obtaining a PEO}
 
-As explained in \Cref{subsec:ssara} register allocation is considered equivalent to the task of register assignment.
-To perform the coloring we proceed this way:
-By \Cref{def:ig} a chordal graph is a graph for which there exists a perfect elimination ordering, that is, there exists a simplicial node such that, if we remove that node the graph is still chordal and, the perfect elimination ordering is then the ordering in which the nodes are removed.
+Recalling \Cref{def:simplicial} we implement a function that determines whether a node of a graph is simplicial:
+
+\begin{alltt}
+Definition is_simplicialb (g : InterfGraph.dict) (r : reg) : bool :=
+  let nbors := InterfGraph.get g r in
+  regs_mem r (InterfGraph.keys g) &&
+  is_cliqueb g nbors.
+\end{alltt}
+
+In this case \texttt{InterfGraph.get} is simply the function to get the neighborhood of a node, \texttt{regs\_mem} is a boolean function to test membership of a node to a set and finally \texttt{is\_cliqueb} is a boolean function to test whether a set is a clique in a specific graph.
+For the purpose of this project, let's ignore the complexity of the various functions as we are only concerned in building a framework that makes it easy to perform formal verification. Anyway, be reassured that all the functions run in polynomial time.
+
+We now define a function that lets us find a node in the graph:
+
+\begin{alltt}
+Definition find_next (g : InterfGraph.dict) : option reg :=
+  find (is_simplicialb g) (InterfGraph.keys g).
+\end{alltt}
+
+As explained in the second step of the coloring procedure, at each iteration we need to find a simplicial node, and that's exactly what \texttt{find\_next} does. Note that the output node is an optional value, since the function may also receive a non chordal graph which may not have a simplicial node. This in reality could not be the case since we make the assumption that the interference graphs we receive are chordal. Unfortunately because of that we need to propagate the option wrapper to all of the return values of the next functions.
+In the extraction phase we will use the \texttt{None} constructor in order to throw an exception in the case that the interference graph (and maybe even the initial JAIR program) is malformed.
+
+Now we proceed with the elimination step function:
+
+\begin{alltt}
+Definition eliminate_step
+  (g : InterfGraph.dict) : option (reg * InterfGraph.dict):=
+  match find_next g with
+  | Some next =>
+    Some (next, ig_remove_node g next)
+  | None => None
+  end.
+\end{alltt}
+
+We describe the constraints of the previous function as follows:
+
+\begin{itemize}
+  \item Preconditions: the input interference graph is chordal;
+  \item Postconditions: only the \texttt{Some} constructor is to be expected, where the value is the tuple composed by a simplicial node and the graph after the removal of that node. The resulting graph by definition of chordality is chordal;
+\end{itemize}
+
+We will talk more about the postconditions of the graph in \Cref{cha:verification}.
+
+Finally we can move onto the definition of the function for obtaining a PEO:
+
+\begin{alltt}
+Function eliminate
+  (g : InterfGraph.dict) \{measure InterfGraph.size g\} : list reg :=
+  match eliminate_step g with
+  | Some (next, g') => next :: (eliminate g')
+  | None => nil
+  end.
+\end{alltt}
+
+The signature of the function is straightforward, we take an interference graph and we return the perfect elimination ordering.
+As was mentioned in \Cref{subsec:funterm} Coq has trouble automatically verifying the termination of this function, because of that we hint that the fixed point lies in the size of the interference graph. We will talk about this in a more detailed way in \Cref{cha:verification}.
+
+\subsection{Coloring}
+\label{subsec:coloring}
+
+The intuition behind the coloring algorithm is the following, first of all we make the following assumptions:
+
+\begin{itemize}
+  \item $G$ is chordal
+  \item The number of available registers $k$ is less than or equal to the chromatic number $\omega(G)$ (after the spilling phase)
+\end{itemize}
+
+Now given this information take into consideration a single iteration of the algorithm, the node we are about to color is simplicial, meaning that its neighborhood forms a clique, not every element of the neighborhood is colored but, the colored neighbors still form a clique (a subset of a clique is still a clique) meaning that the next step consists in finding a color that is not used by the colored neighbors, which is always possible since we assume that $\omega(G) < k$.
+
+Given this introduction about the intuition of the algorithm, we start with the definition of the \texttt{Coloring} object as a dictionary from virtual registers to physical registers, this object will be the output of the coloring phase.
+
+As we mentioned before, at each position of the \textit reversed PEO we find a node whose colored neighborhood forms a clique, because of that, in order to assign this node a new color we pick a random one from the complement set of the neighborhood colors. We define a function specifically for this purpose.
+
+\begin{alltt}
+Definition preg_compl (colors : set preg) : option preg :=
+  match IRPreg.regs_diff preg_all_minus_tmp colors with
+  | nil => None
+  | c :: _ => Some c
+  end.
+\end{alltt}
+
+Here, given a set of colors $S$ we calculate the complement set $\bar S$ and we extract an arbitrary element from it, note that the result of this function is optional since if we run out of registers we are not able to complete to extract from the complement set and ultimately perform register assignment, this is an unexpected case since it would be solved by spilling.
+
+Now we use the function we just defined to get the color of a single node given its interference graph and the current coloring:
+
+\begin{alltt}
+Definition get_color
+  (v : IRVreg.reg)
+  (g : InterfGraph.dict)
+  (c : Coloring.dict)
+  : option IRPreg.reg :=
+  let nbors := InterfGraph.get g v in
+  let used := map (Coloring.get c) nbors in
+  preg_compl used.
+\end{alltt}
+
+Finally we introduce the function to obtain the complete coloring of the interference graph, the procedure is the same as explained at the beginning of \Cref{subsec:coloring}.
+
+\begin{alltt}
+Definition get_coloring
+  (peo : list IRVreg.reg) (g : InterfGraph.dict) : option Coloring.dict :=
+  let fix get_coloring_aux
+    (peo : list IRVreg.reg) (c : Coloring.dict) : option Coloring.dict :=
+    match peo with
+    | nil => Some c
+    | v :: peo =>
+      match get_color v c g with
+      | Some p =>
+        let c := Coloring.update c v p in
+        get_coloring_aux peo c
+      | None => None
+      end
+    end
+  in
+  get_coloring_aux peo Coloring.empty.
+\end{alltt}
 
 \section{SSA Destruction}
 \label{sec:destruct}

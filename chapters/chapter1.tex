@@ -3,31 +3,60 @@
 \chapter{Introduction}
 \label{cha:intro}
 
-Register assignment is the process of assigning each variable used in a program to one of the physical registers available on a target architecture. While high-level programming languages such as C and OCaml allow developers to define an arbitrary number of variables to simplify software development, actual hardware architectures impose strict limits. For example, the x86 architecture provides only 16 general-purpose registers. The main goal of register assignment is to map these virtual registers to physical ones in a way that preserves the original semantics of the program.
+% Register assignment is the process of assigning each variable used in a program to one of the physical registers available on a target architecture.
+While high-level programming languages such as C and OCaml allow developers to define an arbitrary number of variables to simplify software development, actual hardware architectures impose strict limits. For example, the x86 architecture provides only 8 general-purpose registers.
+In order to handle this limination a register allocation pass is required. Usually register allocation is made up of different steps, namely spilling, register assignment and coalescing, for this project we focus on register assignment which is a crucial part of the pipeline.
+The goal of register assignment is to map the virtual registers to physical ones in a way that preserves the original semantics of the program.
+
+Suppose you have the C function shown in \Cref{fig:cfun} and you wanted to compile it for a three register target architecture. Most certainly two variables will need to end up in the same physical register. The goal here is to figure out which physical register needs to be used to store a new variable whenever the total number of variables is greater than the number of physical registers. In this specific case we can see that in the register allocated code, the register \texttt{r2} is reused as its content is no longer needed.
+
+\begin{figure}[ht]
+\centering
+\begin{tabular}{@{}c@{\hspace{1.5em}}c@{}}
+% Left snippet
+\begin{minipage}{0.45\linewidth}
+\begin{alltt}
+int foo() \{
+    int a = get_a();
+    int b = get_b();
+    int c = a + b;
+    int d = a + c;
+    return d;
+\}
+\end{alltt}
+\end{minipage}
+&
+% Right snippet
+\begin{minipage}{0.45\linewidth}
+\begin{alltt}
+int foo() \{
+    int r1 = get_a();
+    int r2 = get_b();
+    int r3 = r1 + r2;
+    int r2 = r1 + r3;
+    return r2;
+\}
+\end{alltt}
+\end{minipage}
+\end{tabular}
+\caption{Left: Original C code. Right: Same code after register assignment.}
+\label{fig:cfun}
+\end{figure}
+
+
+Since now, there hasn't been a real effort in developing an intermediate representation that is suitable for register assignment in a language that allows for formal verification, and this is exactly what this project tackles.
 
 Throughout the course of the thesis we will present the following contributions:
 \begin{itemize}
-    \item We introduce JAIR (Just Another Intermediate Representation), a language in SSA form that takes into consideration the stages of the register assignment pipeline, from liveness analysis to SSA destruction;
+    \item We introduce JAIR (Just Another Intermediate Representation), a language in SSA form that takes into consideration the stages of the register assignment pipeline, from liveness analysis to SSA destruction, in \Cref{sec:jair}, we define the syntax of JAIR with the goal of creating a representation that makes illegal SSA states irrepresentable, we will also make some considerations on the feasability of this task. At the same time we will try to define a data structure that is suitable for visits to extract liveness information and perform other tasks up to code generation;
 
-    \item We verify some aspects of the register assignment pass, namely the termination and the {\color{red} correctness} of the algorithm;
+    \item In \Cref{sec:jair-int}, we reason about the semantics for this intermediate language by defining a virtual machine along with the ability to simulate the indented behavior of JAIR programs on real hardware;
 
-    \item We implement a framework for comparing the output of a program in a simulated environment \textit before register assignment with the output of the same program run on an x86 machine \textit after register assignment
-\end{itemize}
+    \item In \Cref{sec:liveness}, \Cref{sec:ra} and \Cref{sec:destruct} we implement an already existing register assignment algorithm for JAIR programs;
 
-The structure of the thesis is as follows:
+    \item In \Cref{sec:extraction} we implement a framework in OCaml for comparing the output of a program executed on the previously defined virtual machine \textit before register assignment, with the output of the same program run on an x86-64 machine \textit after register assignment;
 
-\begin{itemize}
-\item In \Cref{sec:jair}, we describe the intermediate language in SSA form, during this initial phase the main goal is to define an intermediate representation that makes illegal SSA states irrepresentable, we will also make some considerations on the feasability of this task. At the same we want to define a data structure that is suitable for visits to extract liveness information and perform other tasks up to code generation;
-
-\item In \Cref{sec:interpreter}, we reason about the semantics for this intermediate language by defining a virtual machine along with a function to simulate the indented behavior of programs on real hardware;
-
-\item In \Cref{sec:liveness}, we implement an algorithm for the extraction of the live ranges of the variables from a program with a particular focus on the specific properties of SSA programs, namely the phi instructions. The liveness information will serve the purpose of creating the main data structure that we use to reason on register assignment, that is, the interference graph.
-
-\item \Cref{sec:coloring}, we discuss the algorithm used for the register assignment along with the verification of our implementation, namely a proof of the termination and {\color{red} a proof of the correctness of the algorithm}.
-
-\item In \Cref{sec:destruct}, we apply a destruction algorithm to remove the SSA-specific instructions.
-
-\item In \Cref{sec:extraction}, we discuss the extraction of the Coq code into OCaml code and compare the results of some example programs compiled to x86 assembly with the results of the same programs run on the previously defined virtual machine.
+    \item In \Cref{cha:verification} we verify some aspects of the register assignment pass, namely the termination and the {\color{red} correctness} of the function that returns the perfect elimination ordering of the interference graph;
 \end{itemize}
 
 At a high level, the process begins with liveness analysis, then we proceed with register allocation and end with SSA destruction. The whole pipeline is developed using the Coq Proof Assistant, which allows us to verify the correctness of the core register assignment algorithm. Once verified, the code is then extracted into an efficient language, OCaml, and compiled into a working binary.
