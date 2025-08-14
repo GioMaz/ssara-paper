@@ -451,13 +451,13 @@ As we mentioned before, at each position of the \textit reversed PEO we find a n
 
 \begin{lstlisting}[style=Coq]
 Definition preg_compl (colors : set preg) : option preg :=
-  match IRPreg.regs_diff preg_all_minus_tmp colors with
+  match IRPreg.regs_diff preg_all_minus_tmp_minus_stack colors with
   | nil => None
   | c :: _ => Some c
   end.
 \end{lstlisting}
 
-Here, given a set of colors $S$ we calculate the complement $\bar S$ and we extract an arbitrary element from it, note that the result of this function is optional since if we run out of registers we are not able to extract from the complement and ultimately perform register assignment, this is an unexpected case since it would be solved by spilling.
+Here, given a set of registers we calculate the difference with the set of usable registers \texttt{preg\_all\_minus\_tmp\_minus\_stack} and we extract an arbitrary element from it, note that the result of this function is optional since if we run out of registers we are not able to extract from the complement and ultimately perform register assignment, this is an unexpected case since it would be solved by spilling.
 
 Now we use the function we just defined to get the color of a single node given its interference graph and the current coloring:
 
@@ -513,8 +513,57 @@ There are two ways of solving these cases, we could try to find a sequence of sw
 \[
   r_1 \to \texttt{tmp}, r_3 \to r_1, r_2 \to r_3, \texttt{tmp} \to r_2
 \]
-Now that we are able to compile a parallel move we visit the control graph go through the full 
+Now that we are able to compile a parallel move we visit the control flow graph while translating one section of $\phi$-instructions at a time.
+We identify three different cases when performing the destruction, one for each jump instruction:
+\begin{itemize}
+  \item When visiting a basic block that ends with a \texttt{CondJump} we need to translate two different parallel moves, one for each of the two successors, since we cannot append two different parallel move translations into the current block, as they would conflict with each other, we need to create two new new basic blocks, each of which contains the corresponing translation of the parallel move and then an unconditional jump to the successor. We also give them the same label as the current block but using constructors \texttt{Point1} and \texttt{Point2} to avoid collisions with other blocks, which instead use the \texttt{Normal} constructor;
+  \item If instead we encounter a jump instruction, the translation simply consists in appending the translated parallel move at the end of the instructions of the current block;
+  \item Finally the return instruction does not require any translation;
+\end{itemize}
 
+In \Cref{fig:destruct} we can see an example of SSA destruction in action, in the visit first we encounter an unconditional jump, then a conditional jump and finally a return instruction.
+
+
+\begin{figure}[h]
+\centering
+\begin{minipage}{0.45\textwidth}
+\centering
+  \begin{tikzpicture}[
+      node distance=10mm,
+      every node/.style={draw, align=left, inner sep=4pt},
+      >={Stealth}
+    ]
+    \node (entry)   at (0, 0)   {$r_0 \leftarrow 0$};
+    \node (loop)    at (0, -2)  {$r_1 \leftarrow \phi(r_0, r_2)$ \\ $r_2 \leftarrow r_1 + 1$};
+    \node (end)     at (0, -4)  {ret $r_2$};
+    \draw[->] (entry) -- (loop);
+    \draw[->] ([xshift=10pt]loop.south) to[out=315, in=45, looseness=6] ([xshift=10pt]loop.north);
+    \draw[->] (loop) -- (end);
+    \end{tikzpicture}
+\end{minipage}
+\hfill
+\begin{minipage}{0.45\textwidth}
+\centering
+  \begin{tikzpicture}[
+      node distance=10mm,
+      every node/.style={draw, align=left, inner sep=4pt},
+      >={Stealth}
+    ]
+    \node (entry)   at (0, 0)   {$r_0 \leftarrow 0$ \\ $r_1 \leftarrow r_0$};
+    \node (loop)    at (0, -2)  {$r_2 \leftarrow r_1 + 1$};
+    \node (loop1)   at (-1.5, -4) {$r_2 \leftarrow r_1 + 1$};
+    \node (loop2)   at (1.5, -4)  {$r_1 \leftarrow r_2$};
+    \node (end)     at (0, -6)  {ret $r_6$};
+    \draw[->] (entry) -- (loop);
+    \draw[->] (loop) -- (loop1);
+    \draw[->] (loop) -- (loop2);
+    \draw[->] ([xshift=10pt]loop2.south) to[out=315, in=45, looseness=3] ([xshift=10pt]loop.north);
+    \draw[->] (loop2) -- (end);
+    \end{tikzpicture}
+\end{minipage}
+\caption{SSA destruction of a loop}
+\label{fig:destruct}
+\end{figure}
 
 \section{Extraction}
 \label{sec:extract}

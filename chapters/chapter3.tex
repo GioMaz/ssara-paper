@@ -109,14 +109,6 @@ Before talking about register assignment in SSA form we need to define some prop
     A graph for which there exists a perfect elimination ordering, that is, there exists a simplicial node such that, if we remove that node the graph is still chordal.
 \end{definition}
 
-\begin{definition}[Chromatic number]\label{def:chromatic}
-    Given a graph $G = (V, E)$, its chromatic number $\omega(G)$ is the minimum number of colors needed to color the nodes of $G$ such that no two adjacent nodes have the same color.
-\end{definition}
-
-\begin{theorem}[Chromatic number of chordal graphs]\label{thm:chordal-chromatic}
-    Given a chordal graph $G$, its chromatic number is equal to the size of the largest clique in $G$~\cite{...}.
-\end{theorem}
-
 Another way we can express \Cref{def:chordal} is the following, it will become especially useful during the verification phase of our project.
 
 \[
@@ -144,3 +136,11 @@ The reason why chordal graphs are particularly appealing is that, while graph co
 % TODO: mention the author of proof at https://compilers.cs.uni-saarland.de/papers/ifg_ssa.pdf
 
 While register assignment is NP-complete for an arbitrary representation, registers in SSA form representations are assignable in polynomial time.
+
+\begin{definition}[Chromatic number]\label{def:chromatic}
+    Given a graph $G = (V, E)$, its chromatic number $\omega(G)$ is the minimum number of colors needed to color the nodes of $G$ such that no two adjacent nodes have the same color.
+\end{definition}
+
+\begin{theorem}[Chromatic number of chordal graphs]\label{thm:chordal-chromatic}
+    Given a chordal graph $G$, its chromatic number is equal to the size of the largest clique in $G$~\cite{...}.
+\end{theorem}
