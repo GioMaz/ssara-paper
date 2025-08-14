@@ -31,6 +31,50 @@
 
 % Code
 \usepackage{alltt}
+\usepackage{listings}
+\lstset{
+    basicstyle=\ttfamily,  % Same font as alltt
+    columns=fullflexible,  % Match spacing of alltt
+    keepspaces=true        % Preserve spaces like alltt
+}
+
+% Coq language definition
+\lstdefinelanguage{Coq}{
+    morekeywords={Definition, Inductive, CoInductive, Class, Instance, Fixpoint, CoFixpoint, Function, forall, exists, match, with, end, if, then, else, let, fix, in, Some, None, fun, Type, Prop, Set},
+    sensitive=true,
+    morecomment=[l]{(*},
+    morecomment=[s]{(*}{*)},
+    morestring=[b]",
+}
+
+\lstdefinestyle{Coq}{
+    language=Coq,
+    tabsize=2,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!50!black},
+    stringstyle=\color{orange},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    % frame=single,
+    breaklines=true
+}
+
+% C style definition
+\lstdefinestyle{C}{
+    language=C,
+    tabsize=4,
+    showstringspaces=false,
+    keywordstyle=\color{blue},              % Keywords in blue
+    stringstyle=\color{orange},             % Strings in orange
+    commentstyle=\color{green!50!black},    % Comments in green
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    % frame=single,
+    breaklines=true
+}
+
 
 % Page header
 \usepackage{fancyhdr}

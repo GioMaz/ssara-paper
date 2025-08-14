@@ -49,7 +49,7 @@ To represent the control flow of programs, we employ Control Flow Graphs. A CFG 
 
 We will use this definition of a CFG during the implementation to define programs written in our intermediate representation.
 
-\subsection{The $\phi$ Operator}
+\subsection{$\phi$-instructions}
 \label{subsec:phi}
 
 Due to the single-assignment constraint in SSA, merging variable values from multiple control paths requires the use of $\phi$ instructions. A $\phi$ instruction has the general form:
@@ -69,7 +69,7 @@ An basic example of the usage of the $\phi$ operator is shown in \Cref{fig:phi-u
         every node/.style={draw, align=left, inner sep=4pt},
         >={Stealth}
     ]
-    \node (entry)   at (0, 0)       {$\dots$};
+    \node[minimum width=2cm, minimum height=1cm] (entry)   at (0, 0)       {$\dots$};
     \node (b1)      at (-1.5, -1.5) {$r_1 \leftarrow 5$};
     \node (b2)      at (1.5, -1.5)  {$r_2 \leftarrow 6$};
     \node (end)     at (0, -3)      {$r_3 \leftarrow \phi(r_1, r_2)$ \\ ret $r_3$};
@@ -108,6 +108,14 @@ Before talking about register assignment in SSA form we need to define some prop
 \begin{definition}[Chordal graph]\label{def:chordal}
     A graph for which there exists a perfect elimination ordering, that is, there exists a simplicial node such that, if we remove that node the graph is still chordal.
 \end{definition}
+
+\begin{definition}[Chromatic number]\label{def:chromatic}
+    Given a graph $G = (V, E)$, its chromatic number $\omega(G)$ is the minimum number of colors needed to color the nodes of $G$ such that no two adjacent nodes have the same color.
+\end{definition}
+
+\begin{theorem}[Chromatic number of chordal graphs]\label{thm:chordal-chromatic}
+    Given a chordal graph $G$, its chromatic number is equal to the size of the largest clique in $G$~\cite{...}.
+\end{theorem}
 
 Another way we can express \Cref{def:chordal} is the following, it will become especially useful during the verification phase of our project.
 
