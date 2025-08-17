@@ -38,9 +38,15 @@
     keepspaces=true        % Preserve spaces like alltt
 }
 
-% Coq language definition
+\definecolor{langblue}{RGB}{0,0,180}
+\definecolor{langgreen}{RGB}{0,120,0}
+\definecolor{langred}{RGB}{180,0,0}
+\definecolor{langpurple}{RGB}{120,0,120}
+
 \lstdefinelanguage{Coq}{
-    morekeywords={Definition, Inductive, CoInductive, Class, Instance, Fixpoint, CoFixpoint, Function, forall, exists, match, with, end, if, then, else, let, fix, in, Some, None, fun, Type, Prop, Set},
+    morekeywords=[1]{Definition, Inductive, CoInductive, Class, Instance, Fixpoint, CoFixpoint, Function},
+    morekeywords=[2]{forall, exists, match, with, end, if, then, else, let, in, fix, fun},
+    morekeywords=[3]{Prop, Type, Set, True, False, nat, bool, option, list},
     sensitive=true,
     morecomment=[l]{(*},
     morecomment=[s]{(*}{*)},
@@ -49,8 +55,10 @@
 
 \lstdefinestyle{Coq}{
     language=Coq,
+    keywordstyle=[1]\color{langblue},
+    keywordstyle=[2]\color{langpurple},
+    keywordstyle=[3]\color{langred},
     tabsize=2,
-    keywordstyle=\color{blue},
     commentstyle=\color{green!50!black},
     stringstyle=\color{orange},
     numbers=left,

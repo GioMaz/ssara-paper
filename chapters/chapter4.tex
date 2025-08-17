@@ -3,7 +3,7 @@
 \chapter{Implementation}
 \label{cha:implementation}
 
-In this chapter, we provide an overview of the design and implementation choices that guided the development of the register assignment pipeline and the underlying language JAIR. The implementation is structured in a modular way, beginning with the definition of the syntax and semantics of the language. We then detail the steps required to perform register assignment, namely liveness analysis, graph coloring, and SSA destruction.
+In this chapter, we provide an overview of the design and implementation choices that guided the development of the register assignment pipeline and the underlying language JAIR. The implementation is structured in a modular way, beginning with the definition of the syntax and semantics of the language. We then detail the steps of register assignment, namely liveness analysis, graph coloring, and SSA destruction.
 
 \section{JAIR}
 \label{sec:jair}
@@ -37,17 +37,20 @@ Inductive preg : Type :=
   | RBX
   | RCX
   (* ... *)
+  | UNASSIGNED
 .
 \end{lstlisting}
+
+We also include the \texttt{UNASSIGNED} register, this register is used as a default value for the coloring, removing the need of returning an optional value. Later we will prove that the coloring function will never return this constructor.
 
 Throughout the implementation, every register is understood to be either virtual or physical depending on the phase of the compilation pipeline.
 
 \subsection{Labels}
 
 Initially, we opted for a labelless representation of basic blocks.
-Later in the project we saw the necessity of introducing them for this specific reason: the $\phi$ instructions require labels to identify the incoming control flow, since predecessors of a basic blocks are not ordered. Without labels a $\phi$ instruction would not know which one of the predecessors each variable is bound to.
+Later in the project we saw the necessity of introducing them for this specific reason: the $\phi$ instructions require labels to identify the incoming control flow since predecessors of a basic blocks are not ordered. Without labels a $\phi$ instruction would not know which one of the predecessors each variable is bound to.
 
-An alternative solution would be (since SSA programs only define variables only one) to go back in the control flow to find which of the arguments of the $\phi$ instruction is defined. This approach proved too complicated, so we adopted labels, at the cost of introducing possible inconsistencies discussed in \Cref{subsec:limitations}.
+An alternative solution would be (given the single definition policy of SSA) to go back in the control flow to find which of the arguments of the $\phi$ instruction is defined. This approach proved too complicated, so we adopted labels, at the cost of introducing possible inconsistencies that we will later discuss in \Cref{subsec:limitations}.
 
 \begin{lstlisting}[style=Coq]
 Inductive lbl : Type :=
@@ -56,12 +59,12 @@ Inductive lbl : Type :=
   | Point2 : nat -> lbl.
 \end{lstlisting}
 
-The label type is defined with three constructors. The reason is explained more in detail in \Cref{sec:destruct}, but for now let's just say that the SSA destruction pass introduces additional basic blocks (at most two for each preexisting basic block), with constructors \texttt{Point1} and \texttt{Point2}, that we need to differentiate from the original basic blocks, with the constructor \texttt{Normal}.
+The label type is defined with three constructors. The reason is explained more in detail in \Cref{sec:destruct}, but for now let's just say that the SSA destruction pass introduces additional basic blocks (at most two for each preexisting basic block). With the constructors \texttt{Point1} and \texttt{Point2} we identify these additional basic blocks in order to avoid collisions, whereas with the \texttt{Normal} constructor we identify the blocks that already existed before the destruction pass.
 
 \subsection{ALU Instructions}
 
 In order to perform computation our intermediate representation must be equipped with arithmetic and logic instructions.
-We start by defining the value type \texttt{val} which can be either an immediate integer, a register, or a pointer to a memory location (represented by a natural number):
+We start by defining the value type \texttt{val} which represents an instruction operand. It can be either an immediate integer, a register, or a pointer to a memory location (represented by a natural number):
 
 \begin{lstlisting}[style=Coq]
 Inductive val : Type :=
@@ -82,7 +85,7 @@ Inductive expr : Type :=
 .
 \end{lstlisting}
 
-Binary expressions always use a register as the first operand, preventing expressions that involve only constants, since in that case the result could be computed trivially during a previous step of the compilation. Another thing to note is that, for the sake of register assignment, a differentiation between unary, binary and n-ary expressions is unnecessary, as we are only concerned with the operands of an expression (the registers) and not the operator.
+Binary expressions always use a register as the first operand, preventing expressions that involve only constants, since in that case the result could be computed during a previous step of constant folding. Another thing to note is that, for the sake of register assignment, a differentiation between unary, binary and n-ary expressions is unnecessary, as we are only concerned with the operands of an expression (the registers) and not the operator.
 
 Finally, the type of the instructions \texttt{inst} reflects the core operations in our language. Instructions either define a register by assigning it the result of an expression, or store a value into memory:
 
@@ -92,29 +95,29 @@ Inductive inst : Type :=
   | Store (v : val) (r : reg).
 \end{lstlisting}
 
-The \texttt{Store} instruction is treated specially because it does not produce a result that can be assigned to a register. For this reason, it cannot be expressed as a \texttt{Def}.
+The \texttt{Store} instruction is treated specially because it does not produce a result that can be assigned to a register. Therefore, it cannot be expressed as a \texttt{Def}.
 
 \subsection{$\phi$-instructions}
 
-In \Cref{sec:ssa} we defined $\phi$ nodes as parallel moves based on the control flow predecessor.
-We need a definition that preserves this information, to do so we start by defining the type of an argument of a $\phi$ instruction, namely \texttt{phi\_arg}. Semantically the \texttt{reg} instance is the source of the copy if the control flow comes from the \texttt{lbl} instance.
+In \Cref{sec:ssa} we defined a section of $\phi$-instruction as a parallel move based on the predecessor in the control flow.
+We need an implementation that preserves this definition, to do so we start by defining the type of an argument of a $\phi$-instruction, namely \texttt{phi\_arg}. Semantically the \texttt{reg} instance is the source of the copy if the control flow comes from the \texttt{lbl} instance.
 
 \begin{lstlisting}[style=Coq]
 Definition phi_arg : Type := (reg * lbl).
 \end{lstlisting}
 
-Finally we define the type of a $\phi$ instruction, this is simply an assignment of one of the possible \texttt{phi\_arg}s to a destination register \texttt{r}.
+Finally we define $\phi$-instruction type, this is simply an assignment of one of the possible \texttt{phi\_arg}s to a destination \texttt{reg}.
 
 \begin{lstlisting}[style=Coq]
 Inductive phi : Type :=
-| Phi (r : reg) (rs: list phi_arg).
+| Phi : reg -> list phi_arg -> phi.
 \end{lstlisting}
 
 % Here, each \texttt{phi\_arg} pairs a register with a label identifying the originating block. Initially, we experimented with a label-free control flow representation that used direct pointers to blocks. However, as we will explain later, this made the semantics unnecessarily difficult to define, leading us to prefer label-based control flow.
 
 \subsection{Blocks and Jump Instructions}
 
-ALU instructions and $\phi$ instructions are defined separately so that we can enforce that in basic blocks the $\phi$ section appears first, followed by ALU instructions and finally by a jump instruction.
+ALU instructions and $\phi$-instructions are defined separately enforcing the fact that in basic blocks the $\phi$-instructions appear first, followed by ALU instructions and finally by a jump instruction.
 We define the type of the jump instruction, in mutual recursion with the block type.
 
 \begin{lstlisting}[style=Coq]
@@ -128,78 +131,65 @@ with jinst : Type :=
 
 Control flow is encoded directly using block references instead of labels, preventing accidental jumps to nonexistent blocks. This definition naturally forms a control-flow graph, where blocks are nodes and jump instructions define the edges.
 
-Finally since a CFG as we described in \Cref{subsec:cfg} is a set of blocks where we identify a start block and a control flow relation, it is sufficient to provide the following definition, where the starting point of the CFG is the first block we encounter during a visit and the blocks set of the CFG is the set of blocks reachable from the first block.
+Finally since a CFG as we described in \Cref{subsec:cfg} is a set of blocks where we identify a start block and a control flow relation, it is sufficient to provide the following definition:
 
 \begin{lstlisting}[style=Coq]
 Definition program : Type := block.
 \end{lstlisting}
 
-The following is an example of a function that calculates the Fibonacci of twelve, written in JAIR. The corresponding program is shown in a general SSA form representation in \Cref{fig:example-jair}.
+Where the starting point of the CFG is the first block we encounter during a visit and the blocks set of the CFG is the set of blocks reachable from the first block.
 
-\begin{lstlisting}[style=Coq]
-Block (Normal 3)
-  ret r(6).
-
-Block (Normal 2)
-  r(3) <- phi [(0, Normal 1); (4, Normal 2)]
-  r(4) <- phi [(1, Normal 1); (6, Normal 2)]
-  r(5) <- phi [(2, Normal 1); (7, Normal 2)]
-  r(6) <- r(4) + r(3)
-  r(7) <- r(5) - i(1)
-  if r(7) = i(1)
-    then (Normal 3)
-    else (Normal 2).
-
-Block (Normal 1)
-  r(0) <- i(0)
-  r(1) <- i(1)
-  r(2) <- i(12)
-  Jump (Normal 2).
-\end{lstlisting}
-
-% \begin{lstlisting}[style=Coq]
-% Definition example_block_3 : block :=
-%   Block (Normal 3) [] [] (ret r(6)).
-
-% CoFixpoint example_block_2 : block :=
-%   Block (Normal 2) [
-%     r(3) <- phi [(0, Normal 1); (4, Normal 2)];
-%     r(4) <- phi [(1, Normal 1); (6, Normal 2)];
-%     r(5) <- phi [(2, Normal 1); (7, Normal 2)]
-%   ] [
-%     r(6) <- r(4) + r(3);
-%     r(7) <- r(5) - i(1)
-%   ] (
-%     if r(7) = i(1) then example_block_3 else example_block_2
-%   ).
-
-% Definition example_block_1 : block :=
-%   Block (Normal 1) [] [
-%     r(0) <- i(0);  (* Second block *)
-%     r(1) <- i(1);  (* First block *)
-%     r(2) <- i(12)  (* Iterator*)
-%   ] (
-%     Jump example_block_2
-%   ).
-% \end{lstlisting}
+We demonstrate the capabilities of JAIR in \Cref{fig:example-jair} with an example of the Fibonacci function along with the same example in a general SSA form representation.
 
 \begin{figure}[ht]
-    \centering
-    \begin{tikzpicture}[
-        node distance=10mm,
-        every node/.style={draw, align=left, inner sep=4pt},
-        >={Stealth}
-    ]
-    \node (entry)   at (0, 0)   {$r_0 \leftarrow 0$ \\ $r_1 \leftarrow 1$ \\ $r_2 \leftarrow 12$};
-    \node (loop)    at (0, -3)  {$r_3 \leftarrow \phi(r_0, r_4)$ \\ $r_4 \leftarrow \phi(r_1, r_6)$ \\ $r_5 \leftarrow \phi(r_2, r_7)$ \\ $r_6 \leftarrow r_4 + r_3$ \\ $r_7 \leftarrow r_5 - 1$};
-    \node (end)     at (0, -5.5)  {ret $r_6$};
+\centering
+\begin{minipage}{0.65\textwidth}
+\begin{lstlisting}[style=Coq]
+Definition example_block_3 : block :=
+  Block (Normal 3) [] [] (ret r(6)).
 
-    \draw[->] (entry) -- (loop);
-    \draw[->] ([xshift=10pt]loop.south) to[out=315, in=45, looseness=4] ([xshift=10pt]loop.north);
-    \draw[->] (loop) -- (end);
-    \end{tikzpicture}
-    \caption{Fibonacci of twelve in general SSA form representation}
-    \label{fig:example-jair}
+CoFixpoint example_block_2 : block :=
+  Block (Normal 2) [
+    r(3) <- phi [(0, Normal 1); (4, Normal 2)];
+    r(4) <- phi [(1, Normal 1); (6, Normal 2)];
+    r(5) <- phi [(2, Normal 1); (7, Normal 2)]
+  ] [
+    r(6) <- r(4) + r(3);
+    r(7) <- r(5) - i(1)
+  ] (
+    if r(7) = i(1)
+    then example_block_3
+    else example_block_2
+  ).
+
+Definition example_block_1 : block :=
+  Block (Normal 1) [] [
+    r(0) <- i(0);  (* Second temp *)
+    r(1) <- i(1);  (* First temp *)
+    r(2) <- i(12)  (* Iterator *)
+  ] (
+    Jump example_block_2
+  ).
+\end{lstlisting}
+\end{minipage}
+\hfill
+\begin{minipage}{0.30\textwidth}
+\centering
+\begin{tikzpicture}[
+    node distance=10mm,
+    every node/.style={draw, align=left, inner sep=4pt},
+    >={Stealth}
+]
+  \node (entry)   at (0, 0)   {$r_0 \leftarrow 0$ \\ $r_1 \leftarrow 1$ \\ $r_2 \leftarrow 12$};
+  \node (loop)    at (0, -3)  {$r_3 \leftarrow \phi(r_0, r_4)$ \\ $r_4 \leftarrow \phi(r_1, r_6)$ \\ $r_5 \leftarrow \phi(r_2, r_7)$ \\ $r_6 \leftarrow r_4 + r_3$ \\ $r_7 \leftarrow r_5 - 1$};
+  \node (end)     at (0, -5.5)  {ret $r_6$};
+  \draw[->] (entry) -- (loop);
+  \draw[->] ([xshift=10pt]loop.south) to[out=315, in=45, looseness=4] ([xshift=10pt]loop.north);
+  \draw[->] (loop) -- (end);
+\end{tikzpicture}
+\end{minipage}
+\caption{The code for the Fibonacci function in JAIR along with the same code in a general SSA form representation}
+\label{fig:example-jair}
 \end{figure}
 
 \subsection{Limitations}
@@ -311,7 +301,7 @@ We compute:
 \end{align*}
 where \texttt{$\phi$\_defs[ps]} contains the variables defined in the $\phi$ section.
 
-Starting again with \texttt{live\_out[ps]}, we define it as the the union of the variables that are live before the first ALU instruction of the block. \texttt{live\_in[ps]} is instead the set of variables that are defined in the $\phi$ section together with the variables that are required after the $\phi$ section, intuitively the variables in \texttt{phi\_defs[ps]} are already defined before reaching the start of the block since their execution happens during the jump.
+Starting again with \texttt{live\_out[ps]}, we define it as the union of the variables that are live before the first ALU instruction of the block. \texttt{live\_in[ps]} is instead the set of variables that are defined in the $\phi$ section together with the variables that are required after the $\phi$ section, intuitively the variables in \texttt{phi\_defs[ps]} are already defined before reaching the start of the block since their execution happens during the jump.
 
 % \subsection{Liveness Analysis Function}
 
@@ -451,21 +441,19 @@ As we mentioned before, at each position of the \textit reversed PEO we find a n
 
 \begin{lstlisting}[style=Coq]
 Definition preg_compl (colors : set preg) : option preg :=
-  match IRPreg.regs_diff preg_all_minus_tmp_minus_stack colors with
+  match IRPreg.regs_diff preg_allowed colors with
   | nil => None
   | c :: _ => Some c
   end.
 \end{lstlisting}
 
-Here, given a set of registers we calculate the difference with the set of usable registers \texttt{preg\_all\_minus\_tmp\_minus\_stack} and we extract an arbitrary element from it, note that the result of this function is optional since if we run out of registers we are not able to extract from the complement and ultimately perform register assignment, this is an unexpected case since it would be solved by spilling.
+Here, given a set of registers we calculate the difference with the set of usable registers \texttt{preg\_allowed} and we extract an arbitrary element from it, note that the result of this function is optional since if we run out of registers we are not able to extract from the complement and ultimately perform register assignment, this is an unexpected case, solved by spilling.
 
 Now we use the function we just defined to get the color of a single node given its interference graph and the current coloring:
 
 \begin{lstlisting}[style=Coq]
 Definition get_color
-  (v : IRVreg.reg)
-  (g : InterfGraph.dict)
-  (c : Coloring.dict)
+  (v : IRVreg.reg) (g : InterfGraph.dict) (c : Coloring.dict)
   : option IRPreg.reg :=
   let nbors := InterfGraph.get g v in
   let used := map (Coloring.get c) nbors in
@@ -537,7 +525,7 @@ In \Cref{fig:destruct} we can see an example of SSA destruction in action, in th
     \node (loop)    at (0, -2)  {$r_1 \leftarrow \phi(r_0, r_2)$ \\ $r_2 \leftarrow r_1 + 1$};
     \node (end)     at (0, -4)  {ret $r_2$};
     \draw[->] (entry) -- (loop);
-    \draw[->] ([xshift=10pt]loop.south) to[out=315, in=45, looseness=6] ([xshift=10pt]loop.north);
+    \draw[->] ([xshift=10pt]loop.south) to[out=315, in=45, looseness=8] ([xshift=10pt]loop.north);
     \draw[->] (loop) -- (end);
     \end{tikzpicture}
 \end{minipage}
@@ -549,16 +537,16 @@ In \Cref{fig:destruct} we can see an example of SSA destruction in action, in th
       every node/.style={draw, align=left, inner sep=4pt},
       >={Stealth}
     ]
-    \node (entry)   at (0, 0)   {$r_0 \leftarrow 0$ \\ $r_1 \leftarrow r_0$};
-    \node (loop)    at (0, -2)  {$r_2 \leftarrow r_1 + 1$};
-    \node (loop1)   at (-1.5, -4) {$r_2 \leftarrow r_1 + 1$};
+    \node (entry)   at (0, 0)     {$r_0 \leftarrow 0$ \\ $r_1 \leftarrow r_0$};
+    \node (loop)    at (0, -2)    {$r_2 \leftarrow r_1 + 1$};
+    \node (loop1)   at (-1.5, -4) {nop};
     \node (loop2)   at (1.5, -4)  {$r_1 \leftarrow r_2$};
-    \node (end)     at (0, -6)  {ret $r_6$};
+    \node (end)     at (0, -6)    {ret $r_6$};
     \draw[->] (entry) -- (loop);
     \draw[->] (loop) -- (loop1);
     \draw[->] (loop) -- (loop2);
-    \draw[->] ([xshift=10pt]loop2.south) to[out=315, in=45, looseness=3] ([xshift=10pt]loop.north);
-    \draw[->] (loop2) -- (end);
+    \draw[->] (loop2.south) to[out=315, in=45, looseness=3] ([xshift=10pt]loop.north);
+    \draw[->] (loop1) -- (end);
     \end{tikzpicture}
 \end{minipage}
 \caption{SSA destruction of a loop}

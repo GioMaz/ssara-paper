@@ -36,7 +36,7 @@ int foo() {
 \end{lstlisting}
 \end{minipage}
 
-To obtain the aforementioned behaviour, several register assignment implementations are available, for example some verified compilers such as as CompCert [cit] or CakeML [cit] perform register assignment using respectively translation validation and non-SSA graph coloring.
+To obtain the aforementioned behaviour, several register assignment implementations were developed, for example some verified compilers such as as CompCert [cit] or CakeML [cit] perform register assignment use respectively translation validation and non-SSA graph coloring.
 To the best of our knowledge, no formally verified implementation of SSA-based register assignment via graph coloring exists, which is precisely the problem this project addresses. To this end, we make the following contributions:
 
 \begin{itemize}
@@ -53,4 +53,4 @@ To the best of our knowledge, no formally verified implementation of SSA-based r
 
 In the remainder of the thesis, we discuss related work in \Cref{cha:relwork}, give some general backround in sec \Cref{cha:background}, and finally conclude in \Cref{cha:conclusions}.
 
-At a high level, the process begins with liveness analysis, then we proceed with register allocation and end with SSA destruction. The whole pipeline is developed using the Coq Proof Assistant, which allows us to verify the correctness of the core register assignment algorithm. Once verified, the code is then extracted into an efficient language, OCaml, and compiled into a working binary.
+% At a high level, the process begins with liveness analysis, then we proceed with register allocation and end with SSA destruction. The whole pipeline is developed using the Coq Proof Assistant, which allows us to verify the correctness of the core register assignment algorithm. Once verified, the code is then extracted into an efficient language, OCaml, and compiled into a working binary.
