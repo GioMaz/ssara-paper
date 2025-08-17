@@ -12,24 +12,22 @@ The primary goal in defining the syntax of JAIR is to leverage Coq’s type syst
 
 \subsection{Registers}
 
-Our implementation uses two kinds of registers: virtual registers in the earlier phases of register assignment, and physical registers in the final phase. To support both use cases, we define the syntax of our intermediate language generically over the types of registers.
+Our implementation uses two kinds of registers: virtual registers in the earlier phases of register assignment, and physical registers in the final phase. To support both use cases, we define \texttt{IR} module, which defines the syntax of our intermediate representation generically over these two types of registers.
 
-In order to do so we need to provide the following parameters to the generic implementation:
+The module requires the following parameters:
 \begin{itemize}
-    \item The register type \texttt{reg} which is the set of all the possible registers we can choose from;
+    \item The register type \texttt{reg}, the set of all the registers we can choose from;
     \item The boolean equality function for the register type, namely \texttt{reg\_eqb};
     \item A proof for the decidability of the logical equality for the register type, namely \texttt{reg\_eq\_dec};
 \end{itemize}
 
-Coq modules provide a convenient mechanism to abstract over register types that also works well with extraction.
-
-Each instantiation of this module yields a concrete intermediate representation. For virtual registers, we use the set of natural numbers, which, although bounded by Coq's runtime limits, can be treated as unbounded for our purposes.
+For virtual registers, we use the set of natural numbers, which, although bounded by Coq's runtime limits, can be treated as unbounded for our purposes.
 
 \begin{lstlisting}[style=Coq]
 Definition vreg := nat.
 \end{lstlisting}
 
-For physical registers, we define a finite set that corresponds to the 64-bit general-purpose registers of the x86-64 architecture.
+For physical registers, instead, we define a finite set that corresponds to the 64-bit general-purpose registers of the x86-64 architecture.
 
 \begin{lstlisting}[style=Coq]
 Inductive preg : Type :=
@@ -41,16 +39,16 @@ Inductive preg : Type :=
 .
 \end{lstlisting}
 
-We also include the \texttt{UNASSIGNED} register, this register is used as a default value for the coloring, removing the need of returning an optional value. Later we will prove that the coloring function will never return this constructor.
+We also include the \texttt{UNASSIGNED} register, this register is used as a default value for the coloring, removing the need of returning an optional value everywhere. Later we will prove that the coloring function will never return this constructor.
 
 Throughout the implementation, every register is understood to be either virtual or physical depending on the phase of the compilation pipeline.
 
 \subsection{Labels}
 
 Initially, we opted for a labelless representation of basic blocks.
-Later in the project we saw the necessity of introducing them for this specific reason: the $\phi$ instructions require labels to identify the incoming control flow since predecessors of a basic blocks are not ordered. Without labels a $\phi$ instruction would not know which one of the predecessors each variable is bound to.
+Later in the project we saw the necessity of introducing them for this specific reason: the $\phi$-instructions require labels to identify the incoming control flow since predecessors of a basic blocks are not ordered. Without labels a $\phi$-instruction would not know which one of the predecessors each of its arguments is bound to.
 
-An alternative solution would be (given the single definition policy of SSA) to go back in the control flow to find which of the arguments of the $\phi$ instruction is defined. This approach proved too complicated, so we adopted labels, at the cost of introducing possible inconsistencies that we will later discuss in \Cref{subsec:limitations}.
+An alternative solution would be (given the single definition policy of SSA) to go back in the control flow to find which of the arguments of the $\phi$-instruction is defined. This approach proved too complicated, so we adopted labels, at the cost of introducing possible inconsistencies in the representation that we will later discuss in \Cref{subsec:limitations}.
 
 \begin{lstlisting}[style=Coq]
 Inductive lbl : Type :=
@@ -63,8 +61,8 @@ The label type is defined with three constructors. The reason is explained more 
 
 \subsection{ALU Instructions}
 
-In order to perform computation our intermediate representation must be equipped with arithmetic and logic instructions.
-We start by defining the value type \texttt{val} which represents an instruction operand. It can be either an immediate integer, a register, or a pointer to a memory location (represented by a natural number):
+In order to perform computations, our intermediate representation must provide arithmetical and logical instructions.
+We start by defining the \texttt{val} type which represents an operand of these instructions. It can be either an immediate integer, a register, or a pointer to a memory location (represented by a natural number):
 
 \begin{lstlisting}[style=Coq]
 Inductive val : Type :=
@@ -73,7 +71,7 @@ Inductive val : Type :=
   | Ptr (p : nat).
 \end{lstlisting}
 
-We then define the type of expressions \texttt{expr}. These include register copies, memory loads, and arithmetic and logic operations. Expression depth is restricted to avoid unnecessary complexity and to preserve the linearity of the data structure, thus reducing the complexity of the foreseen algorithms:
+We then define the type of expressions \texttt{expr}. These include register copies, memory loads, and arithmetical and logical operations. Expression depth is restricted to avoid unnecessary complexity and to preserve the linearity of the data structure.
 
 \begin{lstlisting}[style=Coq]
 Inductive expr : Type :=
@@ -85,9 +83,9 @@ Inductive expr : Type :=
 .
 \end{lstlisting}
 
-Binary expressions always use a register as the first operand, preventing expressions that involve only constants, since in that case the result could be computed during a previous step of constant folding. Another thing to note is that, for the sake of register assignment, a differentiation between unary, binary and n-ary expressions is unnecessary, as we are only concerned with the operands of an expression (the registers) and not the operator.
+As you can see from the previous snippet, binary expressions always use a register as the first operand, preventing expressions that involve only constants since, in that case, the result could be computed during a previous step of constant folding. Another thing to note is that, for the sake of register assignment, a differentiation between unary, binary and n-ary expressions is unnecessary, as we are only concerned with the identities of the operands of an expression (the registers) and not the operators.
 
-Finally, the type of the instructions \texttt{inst} reflects the core operations in our language. Instructions either define a register by assigning it the result of an expression, or store a value into memory:
+Finally, the instruction type \texttt{inst} reflects the core operations in our language. Instructions either define a register by assigning to it the result of an expression, or store a value into memory:
 
 \begin{lstlisting}[style=Coq]
 Inductive inst : Type :=
@@ -99,12 +97,14 @@ The \texttt{Store} instruction is treated specially because it does not produce 
 
 \subsection{$\phi$-instructions}
 
-In \Cref{sec:ssa} we defined a section of $\phi$-instruction as a parallel move based on the predecessor in the control flow.
-We need an implementation that preserves this definition, to do so we start by defining the type of an argument of a $\phi$-instruction, namely \texttt{phi\_arg}. Semantically the \texttt{reg} instance is the source of the copy if the control flow comes from the \texttt{lbl} instance.
+In \Cref{sec:ssa} we defined a section of $\phi$-instructions as a parallel move based on the predecessor in the control flow.
+We need an implementation that preserves this definition, to do so we start by defining the type of an argument of a $\phi$-instruction, namely \texttt{phi\_arg}.
 
 \begin{lstlisting}[style=Coq]
 Definition phi_arg : Type := (reg * lbl).
 \end{lstlisting}
+
+Semantically the \texttt{reg} instance is the source of the copy if the control flow comes from the \texttt{lbl} instance.
 
 Finally we define $\phi$-instruction type, this is simply an assignment of one of the possible \texttt{phi\_arg}s to a destination \texttt{reg}.
 
@@ -118,7 +118,7 @@ Inductive phi : Type :=
 \subsection{Blocks and Jump Instructions}
 
 ALU instructions and $\phi$-instructions are defined separately enforcing the fact that in basic blocks the $\phi$-instructions appear first, followed by ALU instructions and finally by a jump instruction.
-We define the type of the jump instruction, in mutual recursion with the block type.
+We define the jump instruction type in mutual recursion with the block type.
 
 \begin{lstlisting}[style=Coq]
 CoInductive block : Type :=
@@ -131,7 +131,7 @@ with jinst : Type :=
 
 Control flow is encoded directly using block references instead of labels, preventing accidental jumps to nonexistent blocks. This definition naturally forms a control-flow graph, where blocks are nodes and jump instructions define the edges.
 
-Finally since a CFG as we described in \Cref{subsec:cfg} is a set of blocks where we identify a start block and a control flow relation, it is sufficient to provide the following definition:
+Finally, a CFG as we described in \Cref{subsec:cfg} is a set of blocks where we identify a start block and a control flow relation, it is sufficient to provide the following definition:
 
 \begin{lstlisting}[style=Coq]
 Definition program : Type := block.
@@ -139,7 +139,7 @@ Definition program : Type := block.
 
 Where the starting point of the CFG is the first block we encounter during a visit and the blocks set of the CFG is the set of blocks reachable from the first block.
 
-We demonstrate the capabilities of JAIR in \Cref{fig:example-jair} with an example of the Fibonacci function along with the same example in a general SSA form representation.
+Now that we covered the main parts of the JAIR implementation, we demonstrate the capabilities of our representation in \Cref{fig:example-jair} with an example of the Fibonacci function along with the same example in a general SSA form representation.
 
 \begin{figure}[ht]
 \centering
@@ -195,9 +195,9 @@ Definition example_block_1 : block :=
 \subsection{Limitations}
 \label{subsec:limitations}
 
-Despite our efforts to use Coq's type system to rule out incorrect programs, certain ill-formed programs cannot be excluded purely by the syntax. We provide examples of such cases using custom notations for readability.
+Despite our efforts to use Coq's type system to rule out incorrect programs, certain ill-formed programs cannot be excluded purely by the syntax, we now provide examples of such cases.
 
-For instance, multiple assignments to the same register or the use of undefined registers are still possible:
+A fundamental problem is that the two core policies of an SSA form represetnation are not enforced, namely multiple assignments to the same register and the use of undefined registers are still possible:
 
 \begin{lstlisting}[style=Coq]
 Definition double_assignment : block :=
@@ -211,14 +211,14 @@ Definition undefined_variable : block :=
   Block (Normal 0) [] [r(1) <- r(0)] (ret r(1)).
 \end{lstlisting}
 
-Similarly, labels are not globally unique, which can lead to conflicting block labels:
+Similarly, uniqueness of labels is not enforced, which can lead to conflicting block labels, as shown in the following example:
 
 \begin{lstlisting}[style=Coq]
 CoFixpoint double_lbl_1 : block := Block (Normal 0) [] [] (Jump double_lbl_2)
   with double_lbl_2 : block := Block (Normal 0) [] [] (Jump double_lbl_1).
 \end{lstlisting}
 
-Finally, $\phi$ instructions may include inconsistent or invalid arguments. For example, the number or identity of predecessors listed in a $\phi$ instruction may not match the actual control-flow structure:
+Finally, $\phi$-instructions may include inconsistent or invalid arguments. For example, the number of the predecessors listed in a $\phi$-instruction may not match the actual number of predecessors:
 
 \begin{lstlisting}[style=Coq]
 Definition ill_formed_phi_2 : block :=
@@ -227,14 +227,14 @@ Definition ill_formed_phi_1 : block :=
   Block (Normal 0) [] [] (Jump ill_formed_phi_2).
 \end{lstlisting}
 
-Although these issues cannot be resolved by the type system alone, they are caught during further semantic analysis or preprocessing phases.
+Although these issues cannot be resolved by the type system alone, they can be caught during a previous semantic analysis phase.
 
 \section{A JAIR Interpreter}
 \label{sec:jair-int}
 
-We now implement a small-step interpreter for our intermediate representation, here we have two goals.
+We now implement a small-step interpreter for our intermediate representation, we do this for two reasons.
 The first one is to clearly state the semantics of JAIR. The second one is that, in order to test register assignemnt, we will compare the result of a program executed on the interpreter virtual machine with the result of the same program executed on bare hardware, if the two results match this will suggest that the semantics of the program are preserved even after register assignment.
-The definition of the virtual machine is straightforward as its components are just the register file, implemented as a map from registers to integers and the memory, implemented as list of integers.
+The definition of the virtual machine is straightforward as its components are just the register file, implemented as a map from registers to integers, and the memory, implemented as list of integers.
 
 \begin{lstlisting}[style=Coq]
 Inductive vm : Type :=
@@ -263,7 +263,7 @@ Fixpoint run (m : vm) (p : program) (fuel : nat) : vm :=
 \end{lstlisting}
 
 The procedure works this way: if we are out of fuel we terminate and we return the current state of the virtual machine, otherwise we proceed with the computation.
-We run the body of instructions of the current block with the function \texttt{run\_insts}, thus creating a new state of the virtual machine. We then treat each jump instruction differently, in the case of a conditional jump we evaluate the condition with the \texttt{eval\_cond} function, in the other two cases no evaluation is needed. Finally, before jumping to the next block we execute its $\phi$ instructions, to do so we call the \texttt{run\_$\phi$s} function  passing as arguments the virtual machine, the current block and the successor block.
+We run the body of instructions of the current block with the function \texttt{run\_insts}, yielding a new state of the virtual machine. We then treat each jump instruction differently, in the case of a conditional jump we evaluate the condition with the \texttt{eval\_cond} function, in the other two cases no evaluation is needed. Finally, before jumping to the next block we execute its $\phi$-instructions, to do so we call the \texttt{run\_phis} function  passing as arguments the virtual machine, the current block and the successor block.
 We continue with the computation until we either run out of fuel or we reach the \texttt{Ret} instruction, saving the result of the program to register zero.
 
 \section{Liveness Analysis}
@@ -272,12 +272,12 @@ We continue with the computation until we either run out of fuel or we reach the
 In this phase, we compute the set of live variables at each program point. This step is crucial for determining which variables interfere and, therefore constitute an edge of the interference graph.
 
 Generally a liveness analysis algorithm works this way:
-we start from the last instruction of the program and go back to the start instruction in a post-order fashion, while we do that we compute the following sets:
+we start from the last instruction of the program and go back to the start instruction in a post-order fashion, while we do that we compute the following sets for each instruction:
 \begin{itemize}
   \item \texttt{live\_in[i]} which contains the variables that are live \textit{before} the execution of instruction \texttt i;
   \item \texttt{live\_out[i]} which instead contains the variables live \textit{after} the execution of \texttt i;
   \item \texttt{def[i]} are the variables created by the instruction, in our language this set is either a singleton or the empty set as we can only define at most one variable per instruction;
-  \item \texttt{use[i]} are the variables used as arguments by the instruction, at most two in our language since this is the maximum arity for the expressions;
+  \item \texttt{use[i]} are the variables used as arguments by the instruction, at most two in our language since that is the maximum arity of our expressions;
 \end{itemize}
 
 Since in our language instructions can be of three different kinds we define different dataflow equations for each instruction type.
@@ -291,51 +291,23 @@ We start by defining the dataflow equations for the ALU instructions:
 Since the computation is done backwards we start with the \texttt{live\_out[i]} set, which must contain the variables that are required by the successors of \texttt i. The
 \texttt{live\_in[i]} set must instead contain the variables required by \texttt i, identified by \texttt{use[i]} and the variables that are required by the next instructions, identified by \texttt{live\_out[i]} $\setminus$ \texttt{def[i]}.
 Here there are some things to note, first of all that the set $\texttt{live\_out[i\_n]} = \emptyset$ where \texttt{i\_n} is the last instruction of the program, since no variables are live after the program ends, we start from this assumption at the beginning of the procedure.
-Then for jump instructions we can simplify the first dataflow equation by removeing \texttt{def[i]} as jump instructions never define variables.
 
-Now, Because of the different semantics of $\phi$ instructions we must define their dataflow equations separately. In particular we define the liveness information of the whole $\phi$ section instead of for single instructions, this is because, as was explained in \Cref{subsec:phi}, $\phi$s are executed parallelly.
+For jump instructions instead, the dataflow equations are similar, we just simplify the first dataflow equation by removeing \texttt{def[i]} as jump instructions never define variables.
+
+Now, because of the different semantics of $\phi$-instructions we must define their dataflow equations separately. In particular we define the liveness information of the whole section instead of for single $\phi$-instructions, this is because, as was explained in \Cref{subsec:phi}, these kind of instructions are executed parallelly.
 We compute:
 \begin{align*}
-  \texttt{live\_in[ps]} &= \texttt{$\phi$\_defs[ps]} \cup \texttt{live\_out[ps]} \\
+  \texttt{live\_in[ps]} &= \texttt{phi\_defs[ps]} \cup \texttt{live\_out[ps]} \\
   \texttt{live\_out[ps]} &= \bigcup \limits_{\texttt j \in \texttt{succ[ps]}} \texttt{live\_in[j]}
 \end{align*}
-where \texttt{$\phi$\_defs[ps]} contains the variables defined in the $\phi$ section.
+where \texttt{phi\_defs[ps]} contains the left-hand sides of the $\phi$-instructions.
 
-Starting again with \texttt{live\_out[ps]}, we define it as the union of the variables that are live before the first ALU instruction of the block. \texttt{live\_in[ps]} is instead the set of variables that are defined in the $\phi$ section together with the variables that are required after the $\phi$ section, intuitively the variables in \texttt{phi\_defs[ps]} are already defined before reaching the start of the block since their execution happens during the jump.
-
-% \subsection{Liveness Analysis Function}
-
-% We take into consideration the previously defined dataflow equations to create a function that performs liveness analysis over the whole control flow graph.
-
-% \begin{lstlisting}[style=Coq]
-% Fixpoint analyze_program (p : program) (fuel : nat) : ProgramInfo.dict * set reg :=
-%   match fuel with
-%   | O =>
-%     let (iis, live_in) := analyze_block p nil in
-%     (programinfo_insert ProgramInfo.empty (get_lbl p) (BlockInfo iis), live_in)
-
-%   | S fuel' =>
-%     let bs := successors p in
-%     let results := map (fun p => analyze_program p fuel') bs in
-%     let (pi, live_out) :=
-%       fold_left
-%         (fun '(pi_acc, live_out) '(pi_succ, live_in) =>
-%           (programinfo_merge pi_acc pi_succ, regs_union live_out live_in))
-%         results
-%         (ProgramInfo.empty, nil)
-%     in
-%     let live_out := regs_union live_out (phi_uses p) in
-%     let (iis, live_in) := analyze_block p live_out in
-%     let pi := programinfo_insert pi (get_lbl p) (BlockInfo iis) in
-%     (pi, regs_diff live_in (phi_defs (get_phis p)))
-%   end.
-% \end{lstlisting}
+Starting again with \texttt{live\_out[ps]}, we define it as the union of the variables that are live before the first ALU instruction of the block. \texttt{live\_in[ps]} is instead the set of variables that are defined in the $\phi$-instructions together with the variables that are required after the $\phi$-instructions, intuitively the variables in \texttt{phi\_defs[ps]} are already defined before reaching the start of the block since their execution happens during the jump.
 
 \section{Register Assignment}
 \label{sec:ra}
 
-As explained in \Cref{subsec:ssara} register assignment is considered equivalent to the task of graph coloring of the interference graph.
-Before starting with the coloring let's keep in mind that by \Cref{def:ig} a chordal graph is a graph for which there exists a perfect elimination ordering, that is, there exists a simplicial node such that, if we remove that node the graph is still chordal and, the perfect elimination ordering is then the ordering in which the nodes are removed.
+As explained in \Cref{subsec:ssara} register assignment is considered equivalent to the task of graph coloring of the interference graph, but, before starting with the coloring let's recall \Cref{def:ig}. A chordal graph is a graph for which there exists a perfect elimination ordering, that is, there exists a simplicial node such that, if we remove that node the graph is still chordal and, the perfect elimination ordering is then the ordering in which those nodes are removed.
 To perform the coloring we then proceed this way:
 \begin{itemize}
   \item We use the liveness information to build the interference graph;
@@ -343,12 +315,14 @@ To perform the coloring we then proceed this way:
   \item We reinsert the nodes of the PEO in \textit{reverse} order into the interference graph and, at the same time, we assign them a color that is not already taken by their (partially colored) neighborhoods;
 \end{itemize}
 
+We now proceed with the implementation of the passes that we just described.
+
 \subsection{Interference Graph Construction}
 
 Now that we extracted the liveness information from our CFG we use it to build the interference graph.
-The reasoning behind the creation of the interference graph is straightforward, we go through every live set computed in the previous step and we create a clique containing its elements. This follows intuitively by the fact that if two variables are live in the same instruction then they interfere as per \Cref{def:ig}.
+The reasoning behind the creation of the interference graph is straightforward, we go through every live set computed in the previous step and we insert a clique containing its elements. This follows intuitively by the fact that if two variables are live in the same instruction then they interfere as per \Cref{def:ig}.
 
-The function that does so is defined as follows:
+The function used to populate the interference graph is the following:
 
 \begin{lstlisting}[style=Coq]
 Definition get_ig (pi : ProgramInfo.dict) : InterfGraph.dict :=
@@ -378,7 +352,7 @@ Definition is_simplicialb (g : InterfGraph.dict) (r : reg) : bool :=
 In this case \texttt{InterfGraph.get} is simply the function to get the neighborhood of a node, \texttt{regs\_mem} is a boolean function to test membership of a node to a set and finally \texttt{is\_cliqueb} is a boolean function to test whether a set is a clique in a specific graph.
 For the purpose of this project, let's ignore the complexity of the various functions as we are only concerned in building a framework that makes it easy to perform formal verification. Anyway, be reassured that all the functions run in polynomial time.
 
-We now define a function that lets us find a node in the graph:
+We now define a function that lets us find a simplicial node in the graph:
 
 \begin{lstlisting}[style=Coq]
 Definition find_next (g : InterfGraph.dict) : option reg :=
@@ -386,9 +360,9 @@ Definition find_next (g : InterfGraph.dict) : option reg :=
 \end{lstlisting}
 
 As explained in the second step of the coloring procedure, at each iteration we need to find a simplicial node, and that's exactly what \texttt{find\_next} does. Note that the output node is an optional value, since the function may also receive a non chordal graph which may not have a simplicial node. This in reality could not be the case since we make the assumption that the interference graphs we receive are chordal. Unfortunately because of that we need to propagate the option wrapper to all of the return values of the next functions.
-In the extraction phase we will use the \texttt{None} constructor in order to throw an exception in the case that the interference graph (and maybe even the initial JAIR program) is malformed.
+In the extracted code, upon receiving a \texttt{None} constructor we will to throw an exception, signaling to the user that the interference graph (and likely even the initial JAIR program) is malformed.
 
-Now we proceed with the elimination step function:
+Now we proceed with the step function for the \texttt{eliminate} function:
 
 \begin{lstlisting}[style=Coq]
 Definition eliminate_step
@@ -400,16 +374,11 @@ Definition eliminate_step
   end.
 \end{lstlisting}
 
-We describe the constraints of the previous function as follows:
+It takes an interference graph which is chordal, finds a simplicial node, removes it, and returns both the removed node and the resulting graph.
+Note that, if the precondition of the input graph being chordal is met, the function will never return the \texttt{None} constructor. furthermore, the resulting graph will also be chordal.
+We will talk more about the postconditions in \Cref{cha:verification}.
 
-\begin{itemize}
-  \item Preconditions: the input interference graph is chordal;
-  \item Postconditions: only the \texttt{Some} constructor is to be expected, where the value is the tuple composed by a simplicial node and the graph after the removal of that node. The resulting graph by definition of chordality is chordal;
-\end{itemize}
-
-We will talk more about the postconditions of the graph in \Cref{cha:verification}.
-
-Finally we can move onto the definition of the function for obtaining a PEO:
+Finally we can move into the \texttt{eliminate} function, that is, the function for obtaining the PEO:
 
 \begin{lstlisting}[style=Coq]
 Function eliminate
@@ -420,8 +389,8 @@ Function eliminate
   end.
 \end{lstlisting}
 
-The signature of the function is straightforward, we take an interference graph and we return the perfect elimination ordering.
-As was mentioned in \Cref{subsec:funterm} Coq has trouble automatically verifying the termination of this function, because of that we hint that the fixed point lies in the size of the interference graph. We will talk about this in a more detailed way in \Cref{cha:verification}.
+The definition of the function is straightforward, we take an interference graph and we remove the simplicial nodes until it becomes the empty graph, constantly appending the removed node at the end of the list.
+As was mentioned in \Cref{subsec:funterm} Coq has trouble automatically verifying the termination of this function, because of that we add an annotation that tells it that the fixed point lies in the size of the interference graph. We will write a proof for this in \Cref{cha:verification}.
 
 \subsection{Coloring}
 \label{subsec:coloring}
@@ -437,7 +406,7 @@ Now take into consideration a single iteration of the algorithm mentioned at the
 
 Given this introduction about the intuition of the algorithm, we start with the definition of the \texttt{Coloring} object as a dictionary from virtual registers to physical registers, this object will be the output of the coloring phase.
 
-As we mentioned before, at each position of the \textit reversed PEO we find a node whose colored neighborhood forms a clique, because of that, in order to assign this node a new color we pick a random one from the complement of the neighborhood colors. We define a function specifically for this purpose.
+As we mentioned before, at each position of the \textit{reversed} PEO we find a node whose colored neighborhood forms a clique, because of that, in order to assign this node a new color we pick a random one from the complement of the neighborhood colors. We define a function specifically for this purpose.
 
 \begin{lstlisting}[style=Coq]
 Definition preg_compl (colors : set preg) : option preg :=
@@ -447,9 +416,9 @@ Definition preg_compl (colors : set preg) : option preg :=
   end.
 \end{lstlisting}
 
-Here, given a set of registers we calculate the difference with the set of usable registers \texttt{preg\_allowed} and we extract an arbitrary element from it, note that the result of this function is optional since if we run out of registers we are not able to extract from the complement and ultimately perform register assignment, this is an unexpected case, solved by spilling.
+Here, given a set of registers we calculate the difference with the set of registers \texttt{preg\_allowed} and we extract an arbitrary element from it, note that the result of this function is optional since, if we run out of registers, we are not able to extract from the complement and ultimately perform register assignment. This, however, is an unexpected case solved by spilling.
 
-Now we use the function we just defined to get the color of a single node given its interference graph and the current coloring:
+Now we use the function we just defined to color a single node given its interference graph and the current coloring:
 
 \begin{lstlisting}[style=Coq]
 Definition get_color
@@ -463,14 +432,14 @@ Definition get_color
 Finally we introduce the function to obtain the complete coloring of the interference graph, the procedure is the same as explained at the beginning of \Cref{subsec:coloring}.
 
 \begin{lstlisting}[style=Coq]
-Definition get_coloring
-  (peo : list IRVreg.reg) (g : InterfGraph.dict) : option Coloring.dict :=
-  let fix get_coloring_aux
-    (peo : list IRVreg.reg) (c : Coloring.dict) : option Coloring.dict :=
+Definition get_coloring (peo : list IRVreg.reg) (g : InterfGraph.dict)
+  : option Coloring.dict :=
+  let fix get_coloring_aux (peo : list IRVreg.reg) (c : Coloring.dict)
+    : option Coloring.dict :=
     match peo with
     | nil => Some c
     | v :: peo =>
-      match get_color v c g with
+      match get_color v g c with
       | Some p =>
         let c := Coloring.update c v p in
         get_coloring_aux peo c
@@ -478,18 +447,18 @@ Definition get_coloring
       end
     end
   in
-  get_coloring_aux peo Coloring.empty.
+  get_coloring_aux (rev peo) Coloring.empty.
 \end{lstlisting}
 
 \section{SSA Destruction}
 \label{sec:destruct}
 
-The final phase before emitting assembly is SSA destruction, which consists in $\phi$-instruction elimination. This final phase is required since $\phi$-instructions are not implemented in common architectures.
-We mentioned in \Cref{subsec:phi} that a section of $\phi$-instructions behaves as a parallel copy, our goal is to find a sequence of instruction that preserves its semantics. The translation is straightforward for some cases, take the following example:
+The final phase before emitting assembly is SSA destruction, which consists in the translation of $\phi$-instructions into moves. This final phase is required since $\phi$-instructions are not implemented in common architectures.
+We mentioned in \Cref{subsec:phi} that a section of $\phi$-instructions behaves as a parallel copy, our goal is to find a sequence of instruction that preserves this property. The translation is straightforward for some cases, take the following example, where $x \to y$ represents moving the content of register $x$ to register $y$:
 \[
   r_1 \to r_2, r_2 \to r_3, r_3 \to r_4
 \]
-Solving this problem basically consists in reordering the moves so that no value is overwritten, the solution for the previous case is:
+Solving this problem basically consists in reordering the moves so that no value is overwritten, the solution for this case is:
 \[
   r_3 \to r_4, r_2 \to r_3, r_1 \to r_2
 \]
@@ -497,16 +466,16 @@ Unfortunately some other cases are non-trivial, namely those who contain loops s
 \[
   r_1 \to r_2, r_2 \to r_3, r_3 \to r_1
 \]
-There are two ways of solving these cases, we could try to find a sequence of swap operations such that at the end of the computation each value ends up in the intended register, this first option could be implemented using a swap instruction (like \texttt{xchg}) if supported by the architecture, or by using the XOR trick. Another option would be to reserve a special register \texttt{tmp} to perform the swaps. In our implementation we use an already verified algorithm [cit] using temporary variables. Given the previous example we would end up with the following result:
+There are two ways of solving these cases, we could try to find a sequence of swap operations such that at the end of the computation each value ends up in the intended register, this first option could be implemented using a swap instruction (like \texttt{xchg}) if supported by the architecture, or by using the XOR operator. Another option would be to reserve a special register \texttt{tmp} to perform the swaps. In our implementation we use an already verified algorithm [cit] that uses temporary variables. Given the previous example we would end up with the following result:
 \[
   r_1 \to \texttt{tmp}, r_3 \to r_1, r_2 \to r_3, \texttt{tmp} \to r_2
 \]
 Now that we are able to compile a parallel move we visit the control flow graph while translating one section of $\phi$-instructions at a time.
 We identify three different cases when performing the destruction, one for each jump instruction:
 \begin{itemize}
-  \item When visiting a basic block that ends with a \texttt{CondJump} we need to translate two different parallel moves, one for each of the two successors, since we cannot append two different parallel move translations into the current block, as they would conflict with each other, we need to create two new new basic blocks, each of which contains the corresponing translation of the parallel move and then an unconditional jump to the successor. We also give them the same label as the current block but using constructors \texttt{Point1} and \texttt{Point2} to avoid collisions with other blocks, which instead use the \texttt{Normal} constructor;
+  \item When visiting a basic block that ends with a \texttt{CondJump} we need to translate two different parallel moves, one for each of the two successors, since we cannot append two different parallel move translations into the current block, as they would conflict with each other, we need to create two new basic blocks, each of which contains the corresponing translation of the parallel move and then an unconditional jump to the successor. We also give them the same label as the current block but using constructors \texttt{Point1} and \texttt{Point2} to avoid a collisions with the current block, which instead uses the \texttt{Normal} constructor;
   \item If instead we encounter a jump instruction, the translation simply consists in appending the translated parallel move at the end of the instructions of the current block;
-  \item Finally the return instruction does not require any translation;
+  \item Finally the return instruction does not require any translation, as it is the last instruction of a program;
 \end{itemize}
 
 In \Cref{fig:destruct} we can see an example of SSA destruction in action, in the visit first we encounter an unconditional jump, then a conditional jump and finally a return instruction.
@@ -555,3 +524,5 @@ In \Cref{fig:destruct} we can see an example of SSA destruction in action, in th
 
 \section{Extraction}
 \label{sec:extract}
+
+\todo{Add description of registers implementation either in \Cref{sec:jair} or \Cref{cha:verification}}
