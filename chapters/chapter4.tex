@@ -522,7 +522,36 @@ In \Cref{fig:destruct} we can see an example of SSA destruction in action, in th
 \label{fig:destruct}
 \end{figure}
 
+\todo{Add description of registers implementation either in \Cref{sec:jair} or \Cref{cha:verification}}
+
 \section{Extraction}
 \label{sec:extract}
 
-\todo{Add description of registers implementation either in \Cref{sec:jair} or \Cref{cha:verification}}
+After defining all of the passes of our register assignment pipeline, we extract them into OCaml.
+In particular we extract the following functions:
+\begin{itemize}
+  \item \texttt{Vm.run} to interpret our programs;
+  \item \texttt{LivenessInfo.analyze\_program} to perform liveness analysis;
+  \item \texttt{InterfGraph.get\_ig} to obtain the interference graph;
+  \item \texttt{Peo.eliminate} to obtain the PEO;
+  \item \texttt{Color.get\_coloring} to construct our coloring map;
+  \item \texttt{Color.color\_program} to convert our program from the virtual registers implementation to one using physical registers implementation;
+  \item \texttt{Destruct.ssa\_destruct} to remove the $\phi$-instructions;
+\end{itemize}
+
+After extracting we create a function to compose our pipeline:
+
+\begin{lstlisting}[style=OCaml]
+let regalloc irvreg_program =
+  let (programinfo, _) = analyze_program irvreg_program fuel_analyze in
+  let interfgraph = get_ig programinfo in
+  let peo = eliminate interfgraph in
+  let coloring =
+    match get_coloring peo interfgraph with
+    | Some c -> c
+    | None -> failwith "Not enough registers to complete allocation"
+  in
+  let irpreg_program = color_program coloring irvreg_program in
+  ssa_destruct fuel_destruct  irpreg_program
+;;
+\end{lstlisting}

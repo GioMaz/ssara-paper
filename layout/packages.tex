@@ -38,10 +38,24 @@
     keepspaces=true        % Preserve spaces like alltt
 }
 
-\definecolor{langblue}{RGB}{0,0,180}
-\definecolor{langgreen}{RGB}{0,120,0}
-\definecolor{langred}{RGB}{180,0,0}
-\definecolor{langpurple}{RGB}{120,0,120}
+\lstdefinestyle{C}{
+    language=C,
+    tabsize=4,
+    keywordstyle=\color{blue},              % Keywords in blue
+    commentstyle=\color{green!50!black},    % Comments in green
+    stringstyle=\color{orange},             % Strings in orange
+    showstringspaces=false,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    % frame=single,
+    breaklines=true
+}
+
+\definecolor{coqblue}{RGB}{0,0,180}
+\definecolor{coqgreen}{RGB}{0,120,0}
+\definecolor{coqred}{RGB}{180,0,0}
+\definecolor{coqpurple}{RGB}{120,0,120}
 
 \lstdefinelanguage{Coq}{
     morekeywords=[1]{Definition, Inductive, CoInductive, Class, Instance, Fixpoint, CoFixpoint, Function},
@@ -55,27 +69,13 @@
 
 \lstdefinestyle{Coq}{
     language=Coq,
-    keywordstyle=[1]\color{langblue},
-    keywordstyle=[2]\color{langpurple},
-    keywordstyle=[3]\color{langred},
+    keywordstyle=[1]\color{coqblue},
+    keywordstyle=[2]\color{coqpurple},
+    keywordstyle=[3]\color{coqred},
     tabsize=2,
-    commentstyle=\color{green!50!black},
+    commentstyle=\color{green!50!black}\itshape,
     stringstyle=\color{orange},
-    numbers=left,
-    numberstyle=\tiny\color{gray},
-    stepnumber=1,
-    % frame=single,
-    breaklines=true
-}
-
-% C style definition
-\lstdefinestyle{C}{
-    language=C,
-    tabsize=4,
     showstringspaces=false,
-    keywordstyle=\color{blue},              % Keywords in blue
-    stringstyle=\color{orange},             % Strings in orange
-    commentstyle=\color{green!50!black},    % Comments in green
     numbers=left,
     numberstyle=\tiny\color{gray},
     stepnumber=1,
@@ -83,6 +83,41 @@
     breaklines=true
 }
 
+% OCaml language with keyword groups
+\lstdefinelanguage{OCaml}{
+  sensitive=true,
+  morecomment=[s]{(*}{*)},
+  morestring=[b]",
+  morestring=[d]',
+  morekeywords=[1]{
+    let, rec, and, val, type, module, struct, sig, class, object, method,
+    inherit, virtual, functor, include, open, external, exception
+  },
+  morekeywords=[2]{
+    if, then, else, match, with, try, when, for, to, downto, while, do, done,
+    begin, end, fun, function
+  },
+  morekeywords=[3]{true, false},
+  morekeywords=[4]{in, of, mutable, private, new, lazy, as, assert}
+}
+
+\lstdefinestyle{OCaml}{
+    language=OCaml,
+    keywordstyle=[1]\color{blue}\bfseries,    % Declarations
+    keywordstyle=[2]\color{purple}\bfseries,  % Control flow
+    keywordstyle=[3]\color{orange}\bfseries,  % Constants
+    keywordstyle=[4]\color{teal}\bfseries,    % Misc keywords
+    tabsize=2,
+    basicstyle=\ttfamily\small,
+    commentstyle=\color{green!50!black}\itshape,
+    stringstyle=\color{red},
+    showstringspaces=false,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    % frame=single,
+    breaklines=true,
+}
 
 % Page header
 \usepackage{fancyhdr}
