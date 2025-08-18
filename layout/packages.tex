@@ -70,6 +70,7 @@
 
 \lstdefinestyle{Coq}{
     language=Coq,
+    mathescape=true,
     keywordstyle=[1]\color{coqblue},
     keywordstyle=[2]\color{coqpurple},
     keywordstyle=[3]\color{coqred},
@@ -104,6 +105,7 @@
 
 \lstdefinestyle{OCaml}{
     language=OCaml,
+    mathescape=true,
     keywordstyle=[1]\color{blue}\bfseries,    % Declarations
     keywordstyle=[2]\color{purple}\bfseries,  % Control flow
     keywordstyle=[3]\color{orange}\bfseries,  % Constants
@@ -118,6 +120,27 @@
     stepnumber=1,
     % frame=single,
     breaklines=true,
+}
+
+\lstdefinelanguage{NASM}{
+  morekeywords={
+    mov, add, sub, mul, div, xor, and, or, inc, dec, jmp, cmp, je, jne, jl, jle, jg, jge, call, ret, push, pop, syscall
+  },
+  sensitive=true,
+  morecomment=[n]{;}{}, % NASM uses ';' for comments
+  morestring=[b]",      % Strings in double quotes
+  morestring=[b]',      % Strings in single quotes
+}
+
+\lstdefinestyle{NASM}{
+  language=NASM,
+    keywordstyle=\color{blue}\bfseries,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  stepnumber=1,
+  % frame=single,
+  basicstyle=\ttfamily,
+  breaklines=true
 }
 
 % Page header
