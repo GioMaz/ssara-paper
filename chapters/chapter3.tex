@@ -48,7 +48,7 @@ To represent the control flow of a program, we employ a \gls{cfg}. A \gls{cfg} i
     \item $\textbf{start} \in B$ is the entry point of the program;
 \end{itemize}
 
-We will use this definition of a CFG during the implementation to define programs written in our intermediate representation.
+We will use this definition of a \gls{cfg} during the implementation to define programs written in our intermediate representation.
 
 \subsection{$\phi$-Instructions}
 \label{subsec:phi}
@@ -92,7 +92,7 @@ We may also find multiple $\phi$-instructions grouped together at the beginning 
 Register assignment is the process of assigning a potentially unbounded number of virtual register to a limited number of physical registers. A well-known approach reduces this problem to graph coloring of the interference graph.
 
 \begin{definition}[Interference Graph]\label{def:ig}
-    Given a CFG, a graph $G = (V, E)$ where $V$ is the set of variables used by the instructions of the CFG, and $\{ u, v \} \in E$, iff variables $u$ and $v$ are both live for at least one instruction.
+    Given a \gls{cfg}, a graph $G = (V, E)$ where $V$ is the set of variables used by the instructions of the \gls{cfg}, and $\{ u, v \} \in E$, iff variables $u$ and $v$ are both live for at least one instruction of the \gls{cfg}.
 \end{definition}
 
 It is immediate to see that a $k$-coloring of the interference graph, where each color represents a physical register, corresponds to a feasible register assignment for a machine with $k$ registers.

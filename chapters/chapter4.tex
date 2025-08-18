@@ -393,7 +393,7 @@ To perform the coloring we then proceed this way:
 
 We now proceed with the implementation of the steps that we just described.
 
-\subsection{Interference Graph Construction}
+\subsection{Building the Interference Graph}
 
 Now that we extracted the liveness information from our \gls{cfg} we use it to build the interference graph.
 The reasoning behind the creation of the interference graph is straightforward, we go through every live set computed in the previous step, and we insert a clique containing its elements. This follows intuitively by the fact that if two variables are live in the same instruction then they interfere as per \Cref{def:ig}.
