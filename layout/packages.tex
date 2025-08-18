@@ -38,12 +38,17 @@
     keepspaces=true        % Preserve spaces like alltt
 }
 
+\definecolor{myblue}{RGB}{0,0,180}
+\definecolor{mygreen}{RGB}{0,120,0}
+\definecolor{myred}{RGB}{180,0,0}
+\definecolor{mypurple}{RGB}{120,0,120}
+
 \lstdefinestyle{C}{
     language=C,
     mathescape=true,
     tabsize=4,
-    keywordstyle=\color{blue},              % Keywords in blue
-    commentstyle=\color{green!50!black},    % Comments in green
+    keywordstyle=\color{myblue},              % Keywords in blue
+    commentstyle=\color{mygreen!50!black},    % Comments in green
     stringstyle=\color{orange},             % Strings in orange
     showstringspaces=false,
     numbers=left,
@@ -53,12 +58,7 @@
     breaklines=true
 }
 
-\definecolor{coqblue}{RGB}{0,0,180}
-\definecolor{coqgreen}{RGB}{0,120,0}
-\definecolor{coqred}{RGB}{180,0,0}
-\definecolor{coqpurple}{RGB}{120,0,120}
-
-\lstdefinelanguage{Coq}{
+\lstdefinelanguage{Rocq}{
     morekeywords=[1]{Definition, Inductive, CoInductive, Class, Instance, Fixpoint, CoFixpoint, Function},
     morekeywords=[2]{forall, exists, match, with, end, if, then, else, let, in, fix, fun},
     morekeywords=[3]{Prop, Type, Set, True, False, nat, bool, option, list},
@@ -68,12 +68,12 @@
     morestring=[b]",
 }
 
-\lstdefinestyle{Coq}{
-    language=Coq,
+\lstdefinestyle{Rocq}{
+    language=Rocq,
     mathescape=true,
-    keywordstyle=[1]\color{coqblue},
-    keywordstyle=[2]\color{coqpurple},
-    keywordstyle=[3]\color{coqred},
+    keywordstyle=[1]\color{myblue},
+    keywordstyle=[2]\color{mypurple},
+    keywordstyle=[3]\color{myred},
     tabsize=2,
     commentstyle=\color{green!50!black}\itshape,
     stringstyle=\color{orange},
@@ -90,7 +90,6 @@
   sensitive=true,
   morecomment=[s]{(*}{*)},
   morestring=[b]",
-  morestring=[d]',
   morekeywords=[1]{
     let, rec, in, and, val, type, module, struct, sig, class, object, method,
     inherit, virtual, functor, include, open, external, exception
@@ -106,10 +105,10 @@
 \lstdefinestyle{OCaml}{
     language=OCaml,
     mathescape=true,
-    keywordstyle=[1]\color{blue}\bfseries,    % Declarations
-    keywordstyle=[2]\color{purple}\bfseries,  % Control flow
-    keywordstyle=[3]\color{orange}\bfseries,  % Constants
-    keywordstyle=[4]\color{teal}\bfseries,    % Misc keywords
+    keywordstyle=[1]\color{myblue}\bfseries,    % Declarations
+    keywordstyle=[2]\color{mypurple}\bfseries,  % Control flow
+    keywordstyle=[3]\color{orange}\bfseries,    % Constants
+    keywordstyle=[4]\color{teal}\bfseries,      % Misc keywords
     tabsize=2,
     basicstyle=\ttfamily\small,
     commentstyle=\color{green!50!black}\itshape,
@@ -134,7 +133,7 @@
 
 \lstdefinestyle{NASM}{
   language=NASM,
-    keywordstyle=\color{blue}\bfseries,
+    keywordstyle=\color{myblue}\bfseries,
   numbers=left,
   numberstyle=\tiny\color{gray},
   stepnumber=1,
@@ -154,7 +153,7 @@
 
 % Bibliography
 \usepackage[style=numeric]{biblatex}
-\addbibresource{biblio.bib}
+\addbibresource{library.bib}
 
 % Abstract
 \newenvironment{abstract}%
@@ -176,6 +175,9 @@
 \usepackage{cleveref}
 \usepackage{glossaries}
 \makeglossaries
+\newacronym{ssa}{SSA}{Static Single Assignment}
+\newacronym{peo}{PEO}{Perfect Elimination Order}
+\newacronym{cfg}{CFG}{Control Flow Graph}
 \newglossaryentry{set}{name={set},description={a collection of objects}}
 \newglossaryentry{due}{name={second},description={second example}}
 \newglossaryentry{emptyset}{name={\ensuremath{\emptyset}},description={the empty set}}
@@ -206,8 +208,6 @@
 \newcolumntype{C}{>{$}c<{$}}
 \newcolumntype{R}{>{$}r<{$}}
 \usepackage{csquotes}
-\usepackage[style=numeric]{biblatex}
-\addbibresource{bibliografia.bib}
 \renewcommand{\arraystretch}{2}
 \usepackage{bbm}
 \DeclareMathOperator*{\argmax}{argmax}

@@ -2,3 +2,10 @@
 
 \chapter{Verification}
 \label{cha:verification}
+
+In this chapter we present the reasoning behind the partial verification of the core components of our register assignment pipeline, namely, the verification of the termination and the correctness of the function for obtaining the perfect elimination ordering, defined in \Cref{subsec:peo}. In particular, we will prove the same theorems that can be found in the \texttt{Peo.v} file in a mechanized form.
+
+\section{Termination of \texttt{eliminate}}
+
+As mentioned in \Cref{subsec:funterm}, to allow a function definition, Rocq requires a proof of its termination, for functions that use structural recursion the proof of termination is inferred automatically, for other functions instead, an explicit proof of termination is required. This is the case for \texttt{eliminate}.
+

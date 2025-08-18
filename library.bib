@@ -1,0 +1,53 @@
+@inproceedings{Rideau-Leroy-regalloc,
+  author = {Silvain Rideau and Xavier Leroy},
+  title = {Validating register allocation and spilling},
+  booktitle = {Compiler Construction (CC 2010)},
+  year = 2010,
+  publisher = {Springer},
+  series = {Lecture Notes in Computer Science},
+  volume = 6011,
+  pages = {224-243},
+  xtopic = {compcert},
+  url = {http://xavierleroy.org/publi/validation-regalloc.pdf},
+  urlpublisher = {http://dx.doi.org/10.1007/978-3-642-11970-5_13},
+  abstract = {Following the translation validation approach to high-assurance
+compilation, we describe a new algorithm for validating {\em a
+posteriori} the results of a run of register allocation.  The
+algorithm is based on backward dataflow inference of
+equations between variables, registers and stack locations, and can
+cope with sophisticated forms of spilling and live range splitting, as
+well as many forms of architectural irregularities such as overlapping
+registers.  The soundness of the algorithm was mechanically proved
+using the Coq proof assistant.}
+}
+
+@article{10.1145/2578855.2535841,
+author = {Kumar, Ramana and Myreen, Magnus O. and Norrish, Michael and Owens, Scott},
+title = {CakeML: a verified implementation of ML},
+year = {2014},
+issue_date = {January 2014},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {49},
+number = {1},
+issn = {0362-1340},
+url = {https://doi.org/10.1145/2578855.2535841},
+doi = {10.1145/2578855.2535841},
+abstract = {We have developed and mechanically verified an ML system called CakeML, which supports a substantial subset of Standard ML. CakeML is implemented as an interactive read-eval-print loop (REPL) in x86-64 machine code. Our correctness theorem ensures that this REPL implementation prints only those results permitted by the semantics of CakeML. Our verification effort touches on a breadth of topics including lexing, parsing, type checking, incremental and dynamic compilation, garbage collection, arbitrary-precision arithmetic, and compiler bootstrapping.Our contributions are twofold. The first is simply in building a system that is end-to-end verified, demonstrating that each piece of such a verification effort can in practice be composed with the others, and ensuring that none of the pieces rely on any over-simplifying assumptions. The second is developing novel approaches to some of the more challenging aspects of the verification. In particular, our formally verified compiler can bootstrap itself: we apply the verified compiler to itself to produce a verified machine-code implementation of the compiler. Additionally, our compiler proof handles diverging input programs with a lightweight approach based on logical timeout exceptions. The entire development was carried out in the HOL4 theorem prover.},
+journal = {SIGPLAN Not.},
+month = jan,
+pages = {179–191},
+numpages = {13},
+keywords = {ML, compiler bootstrapping, compiler verification, machine code verification, read-eval-print loop, verified garbage collection., verified parsing, verified type checking}
+}
+
+@manual{intel_sdm_vol1,
+  author       = {{Intel Corporation}},
+  title        = {Intel\textregistered{} 64 and IA-32 Architectures Software Developer’s Manual},
+  year         = {2015},
+  month        = {June},
+  volume       = {1},
+  organization = {Intel Corporation},
+  address      = {2200 Mission College Blvd., Santa Clara, CA 95054-1549, USA},
+  language     = {English}
+}

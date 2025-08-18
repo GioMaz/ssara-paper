@@ -3,16 +3,16 @@
 \chapter{Background}
 \label{cha:background}
 
-In this chapter, we present the tools and concepts employed throughout this project. We begin by introducing the Coq Proof Assistant, highlighting the features that make it suitable for our implementation. We then describe the Single Static Assignment form, the intermediate representation family used in our compiler. Finally, we discuss the theoretical foundations of register assignment, with particular attention to SSA programs.
+In this chapter, we present the tools and concepts employed throughout this project. We begin by introducing the Rocq Proof Assistant, highlighting the features that make it suitable for our implementation. We then describe the Single Static Assignment form, the intermediate representation family used in our compiler. Finally, we discuss the theoretical foundations of register assignment, with particular attention to SSA programs.
 
-\section{The Coq Proof Assistant}
+\section{The Rocq Proof Assistant}
 
-The core of our register assignment is implemented in Coq, an interactive proof assistant based on a functional language called Gallina. Other than exposing a language for performing computation Coq also provides us with tools for formal verification, such as the possibily to define and prove facts about functions and other objects.
+The core of our register assignment is implemented in Rocq, an interactive proof assistant based on a functional language called Gallina. Other than exposing a language for performing computation Rocq also provides us with tools for formal verification, such as the possibily to define and prove facts about functions and other objects.
 
 \subsection{Function Termination}
 \label{subsec:funterm}
 
-A fundamental feature of Coq is its enforcement of termination in all function definitions. Recursive functions are typically defined using the \texttt{Fixpoint} keyword, which requires pattern matching over inductive types. Coq statically checks that, for each recursive call, there exists a structurally decreasing argument, guaranteeing termination by eventually reaching a base case.
+A fundamental feature of Rocq is its enforcement of termination in all function definitions. Recursive functions are typically defined using the \texttt{Fixpoint} keyword, which requires pattern matching over inductive types. Rocq statically checks that, for each recursive call, there exists a structurally decreasing argument, guaranteeing termination by eventually reaching a base case.
 
 Some recursive functions, however, do not conform to this syntactic criterion. In such cases, we are offered two common workarounds:
 
@@ -40,7 +40,7 @@ The intermediate representation utilizes the Single Static Assignment form due t
 \subsection{Control Flow Graphs}
 \label{subsec:cfg}
 
-To represent the control flow of programs, we employ Control Flow Graphs. A CFG is defined as the triple $(B, CF, \textbf{start})$, where:
+To represent the control flow of a program, we employ a \gls{cfg}. A \gls{cfg} is defined as the triple $(B, CF, \textbf{start})$, where:
 
 \begin{itemize}
     \item $B$ is the set of basic blocks, each consisting of a sequence of instructions terminated by either a jump instruction or an halt instruction;
@@ -50,7 +50,7 @@ To represent the control flow of programs, we employ Control Flow Graphs. A CFG 
 
 We will use this definition of a CFG during the implementation to define programs written in our intermediate representation.
 
-\subsection{$\phi$-instructions}
+\subsection{$\phi$-Instructions}
 \label{subsec:phi}
 
 Due to the single assignment policy of SSA, merging variables from multiple control paths requires the use of a $\phi$-instructions. A $\phi$-instruction has the general form:
@@ -107,7 +107,7 @@ Before talking about register assignment in SSA form we need to define some prop
 \end{definition}
 
 \begin{definition}[Chordal graph]\label{def:chordal}
-    A graph for which there exists a perfect elimination ordering, that is, there exists a simplicial node such that, if we remove that node the graph is still chordal.
+    A graph for which there exists a \gls{peo}, that is, there exists a simplicial node such that, if we remove that node the graph is still chordal.
 \end{definition}
 
 Another way we can express \Cref{def:chordal} is the following, it will become especially useful during the verification phase of our project.

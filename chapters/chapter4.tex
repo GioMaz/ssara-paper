@@ -8,7 +8,7 @@ In this chapter, we provide an overview of the design and implementation choices
 \section{JAIR}
 \label{sec:jair}
 
-The primary goal in defining the syntax of JAIR is to leverage Coq’s type system to rule out as many ill-formed SSA programs as possible, as discussed in \Cref{sec:ssa}. We begin by describing how registers are represented in our language.
+The primary goal in defining the syntax of JAIR is to leverage Rocq’s type system to rule out as many ill-formed SSA programs as possible, as discussed in \Cref{sec:ssa}. We begin by describing how registers are represented in our language.
 
 \subsection{Registers}
 
@@ -21,15 +21,15 @@ The module requires the following parameters:
     \item A proof for the decidability of the logical equality for the register type, namely \texttt{reg\_eq\_dec};
 \end{itemize}
 
-For virtual registers, we use the set of natural numbers, which, although bounded by Coq's runtime limits, can be treated as unbounded for our purposes.
+For virtual registers, we use the set of natural numbers, which, although bounded by Rocq's runtime limits, can be treated as unbounded for our purposes.
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Definition vreg := nat.
 \end{lstlisting}
 
 For physical registers, instead, we define a finite set that corresponds to the 64-bit general-purpose registers of the x86-64 architecture.
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Inductive preg : Type :=
   | RAX
   | RBX
@@ -50,7 +50,7 @@ Later in the project we saw the necessity of introducing them for this specific 
 
 An alternative solution would be (given the single definition policy of SSA) to go back in the control flow to find which of the arguments of the $\phi$-instruction is defined. This approach proved too complicated, so we adopted labels, at the cost of introducing possible inconsistencies in the representation that we will later discuss in \Cref{subsec:limitations}.
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Inductive lbl : Type :=
   | Normal : nat -> lbl
   | Point1 : nat -> lbl
@@ -64,7 +64,7 @@ The label type is defined with three constructors. The reason is explained more 
 In order to perform computations, our intermediate representation must provide arithmetical and logical instructions.
 We start by defining the \texttt{val} type which represents an operand of these instructions. It can be either an immediate integer, a register, or a pointer to a memory location (represented by a natural number):
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Inductive val : Type :=
   | Imm (x : Z)
   | Reg (r : reg)
@@ -73,7 +73,7 @@ Inductive val : Type :=
 
 We then define the type of expressions \texttt{expr}. These include register copies, memory loads, and arithmetical and logical operations. Expression depth is restricted to avoid unnecessary complexity and to preserve the linearity of the data structure.
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Inductive expr : Type :=
   | Val : val -> expr
   | Load : val -> expr
@@ -87,7 +87,7 @@ As can be seen from the previous snippet, binary expressions always use a regist
 
 Finally, the instruction type \texttt{inst} reflects the core operations in our language. Instructions either define a register by assigning to it the result of an expression, or store a value into memory:
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Inductive inst : Type :=
   | Def (r : reg) (e : expr)
   | Store (v : val) (r : reg).
@@ -95,12 +95,12 @@ Inductive inst : Type :=
 
 The \texttt{Store} instruction is treated specially because it does not produce a result that can be assigned to a register. Therefore, it cannot be expressed as a \texttt{Def}.
 
-\subsection{$\phi$-instructions}
+\subsection{$\phi$-Instructions}
 
 In \Cref{sec:ssa} we defined a section of $\phi$-instructions as a parallel move based on the predecessor in the control flow.
 We need an implementation that preserves this definition, to do so we start by defining the type of an argument of a $\phi$-instruction, namely \texttt{phi\_arg}.
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Definition phi_arg : Type := (reg * lbl).
 \end{lstlisting}
 
@@ -108,7 +108,7 @@ Semantically the \texttt{reg} instance is the source of the copy if the control 
 
 Finally, we define $\phi$-instruction type, this is simply an assignment of one of the possible \texttt{phi\_arg}s to a destination \texttt{reg}.
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Inductive phi : Type :=
 | Phi : reg -> list phi_arg -> phi.
 \end{lstlisting}
@@ -120,7 +120,7 @@ Inductive phi : Type :=
 ALU instructions and $\phi$-instructions are defined separately enforcing the fact that in basic blocks the $\phi$-instructions appear first, followed by ALU instructions and finally by a jump instruction.
 We define the jump instruction type in mutual recursion with the block type.
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 CoInductive block : Type :=
   | Block (l : lbl) (ps : list phi) (is : list inst) (j : jinst)
 with jinst : Type :=
@@ -131,20 +131,20 @@ with jinst : Type :=
 
 Control flow is encoded directly using block references instead of labels, preventing accidental jumps to nonexistent blocks. This definition naturally forms a control-flow graph, where blocks are nodes and jump instructions define the edges.
 
-Finally, a CFG as we described in \Cref{subsec:cfg} is a set of blocks where we identify a start block and a control flow relation, it is sufficient to provide the following definition:
+Finally, a \gls{cfg} as we described in \Cref{subsec:cfg} is a set of blocks where we identify a start block and a control flow relation, it is sufficient to provide the following definition:
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Definition program : Type := block.
 \end{lstlisting}
 
-Where the starting point of the CFG is the first block we encounter during a visit and the blocks set of the CFG is the set of blocks reachable from the first block.
+Where the starting point of the \gls{cfg} is the first block we encounter during a visit and the blocks set of the \gls{cfg} is the set of blocks reachable from the first block.
 
 Now that we covered the main parts of the JAIR implementation, we demonstrate the capabilities of our representation in \Cref{fig:example-jair} with an example of the Fibonacci function along with the same example in a general SSA form representation.
 
 \begin{figure}[ht]
 \centering
 \begin{minipage}{0.65\textwidth}
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Definition example_block_3 : block :=
   Block (Normal 3) [] [] (ret r(6)).
 
@@ -188,18 +188,18 @@ Definition example_block_1 : block :=
   \draw[->] (loop) -- (end);
 \end{tikzpicture}
 \end{minipage}
-\caption{The code for the Fibonacci function in JAIR along with the same code in a general SSA form representation}
+\caption{Code for the Fibonacci function in JAIR along with the same code in a general SSA form representation}
 \label{fig:example-jair}
 \end{figure}
 
 \subsection{Limitations}
 \label{subsec:limitations}
 
-Despite our efforts to use Coq's type system to rule out incorrect programs, certain ill-formed programs cannot be excluded purely by the syntax, we now provide examples of such cases.
+Despite our efforts to use Rocq's type system to rule out incorrect programs, certain ill-formed programs cannot be excluded purely by the syntax, we now provide examples of such cases.
 
 A fundamental problem is that the two core policies of an SSA form representation are not enforced, namely multiple assignments to the same register and the use of undefined registers are still possible:
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Definition double_assignment : block :=
   Block (Normal 0) [] [
     r(1) <- i(0);
@@ -213,7 +213,7 @@ Definition undefined_variable : block :=
 
 Similarly, uniqueness of labels is not enforced, which can lead to conflicting block labels, as shown in the following example:
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 CoFixpoint double_lbl_1 : block :=
   Block (Normal 0) [] [] (Jump double_lbl_2)
 with double_lbl_2 : block :=
@@ -222,7 +222,7 @@ with double_lbl_2 : block :=
 
 Finally, $\phi$-instructions may include inconsistent or invalid arguments. For example, the number of the predecessors listed in a $\phi$-instruction may not match the actual number of predecessors:
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Definition ill_formed_phi_2 : block :=
   Block (Normal 1) [
     r(1) <- phi [(1, 5); (2, 6); (3; 7)]] [] (ret r(0)).
@@ -239,7 +239,7 @@ We now implement a small-step interpreter for our intermediate representation, w
 The first one is to clearly state the semantics of JAIR. The second one is that, in order to test register assignment, we will compare the result of a program executed on the interpreter virtual machine with the result of the same program executed on bare hardware, if the two results match this will suggest that the semantics of the program are preserved even after register assignment.
 The definition of the virtual machine is straightforward as its components are just the register file, implemented as a map from registers to integers, and the memory, implemented as list of integers.
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Inductive vm : Type :=
   | Vm : (reg -> Z) -> list Z -> vm.
 \end{lstlisting}
@@ -248,7 +248,7 @@ After defining the virtual machine, we define the primitives to interact with it
 
 The function to read a value from a register is defined as follows:
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Definition get_reg (m : vm) (r : reg) : cell :=
   match m with
   | Vm regs _ => regs r
@@ -259,7 +259,7 @@ This function takes a virtual machine state \texttt m and a register \texttt r, 
 
 The corresponding function to write a value into a register is defined as:
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Definition set_reg (m : vm) (r : reg) (c : cell) : vm :=
   match m with
   | Vm regs cells =>
@@ -271,7 +271,7 @@ Here, we take the current register file map, and we wrap it with a lambda functi
 
 Now, we define analogous operations for memory access. In our implementation memory does not support random access, instead, we use a list that grows whenever a new value is stored, filling the previously uninitialized memory locations with zeroes. The function to retrieve the content of a memory location is defined as follows:
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Definition get_cell (m : vm) (i : nat) : cell :=
   let fix get_cell_aux (cells : list cell) (i : nat) : cell :=
     match cells, i with
@@ -294,7 +294,7 @@ The recursive function considers three cases:
 
 Finally, the function for writing a value to a memory location is defined as:
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Definition set_cell (m : vm) (i : nat) (c : cell) : vm :=
   let fix set_cell_aux (cells : list cell) (i : nat) (c : cell) : list cell :=
     match cells, i with
@@ -318,9 +318,9 @@ The recursive function handles four cases:
 \end{itemize}
 
 The only remaining task is to define a function that simulates program execution, ideally we would want that function to have type \texttt{vm $\to$ program $\to$ vm} taking the initial state of the virtual machine and the program as inputs and returning the new state of the virtual machine.
-Unfortunately, as we mentioned in \Cref{subsec:funterm}, Coq does not allow for the definition of functions of which we cannot prove termination, and proving it for this function would entail solving the halting problem. We thus resort to using fuel based recursion for this case.
+Unfortunately, as we mentioned in \Cref{subsec:funterm}, Rocq does not allow for the definition of functions of which we cannot prove termination, and proving it for this function would entail solving the halting problem. We thus resort to using fuel based recursion for this case.
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Fixpoint run (m : vm) (p : program) (fuel : nat) : vm :=
   match p, fuel with
   | _, O => m
@@ -383,24 +383,24 @@ Starting again with \texttt{live\_out[ps]}, we define it as the union of the var
 \section{Register Assignment}
 \label{sec:ra}
 
-As explained in \Cref{subsec:ssara} register assignment is considered equivalent to the task of graph coloring of the interference graph, but, before starting with the coloring let's recall \Cref{def:ig}. A chordal graph is a graph for which there exists a perfect elimination ordering, that is, there exists a simplicial node such that, if we remove that node the graph is still chordal and, the perfect elimination ordering is then the ordering in which those nodes are removed.
+As explained in \Cref{subsec:ssara} register assignment is considered equivalent to the task of graph coloring of the interference graph, but, before starting with the coloring let's recall \Cref{def:ig}. A chordal graph is a graph for which there exists a \gls{peo}, that is, there exists a simplicial node such that, if we remove that node the graph is still chordal and, the \gls{peo} is then the ordering in which those nodes are removed.
 To perform the coloring we then proceed this way:
 \begin{itemize}
   \item We use the liveness information to build the interference graph;
-  \item We iteratively remove the simplicial nodes from the interference graph obtaining a perfect elimination ordering;
-  \item We reinsert the nodes of the PEO in \textit{reverse} order into the interference graph and, at the same time, we assign them a color that is not already taken by their (partially colored) neighborhoods;
+  \item We iteratively remove the simplicial nodes from the interference graph obtaining a \gls{peo};
+  \item We reinsert the nodes of the \gls{peo} in \textit{reverse} order into the interference graph and, at the same time, we assign them a color that is not already taken by their (partially colored) neighborhoods;
 \end{itemize}
 
 We now proceed with the implementation of the steps that we just described.
 
 \subsection{Interference Graph Construction}
 
-Now that we extracted the liveness information from our CFG we use it to build the interference graph.
+Now that we extracted the liveness information from our \gls{cfg} we use it to build the interference graph.
 The reasoning behind the creation of the interference graph is straightforward, we go through every live set computed in the previous step, and we insert a clique containing its elements. This follows intuitively by the fact that if two variables are live in the same instruction then they interfere as per \Cref{def:ig}.
 
 The function used to populate the interference graph is the following:
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Definition get_ig (pi : ProgramInfo.dict) : InterfGraph.dict :=
   fold_left
     (fun g l =>
@@ -414,11 +414,12 @@ Definition get_ig (pi : ProgramInfo.dict) : InterfGraph.dict :=
 
 Where \texttt{ig\_insert\_instinfos} is a function that given an interference graph and a list of live sets returns a graph where a clique containing the elements of the set is added for each element of the list.
 
-\subsection{Obtaining a PEO}
+\subsection{Obtaining a Perfect Elimination Order}
+\label{subsec:peo}
 
 Recalling \Cref{def:simplicial} we implement a function that determines whether a node of a graph is simplicial:
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Definition is_simplicialb (g : InterfGraph.dict) (r : reg) : bool :=
   let nbors := InterfGraph.get g r in
   regs_mem r (InterfGraph.keys g) &&
@@ -430,7 +431,7 @@ For the purpose of this project, let's ignore the complexity of the various func
 
 We now define a function that lets us find a simplicial node in the graph:
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Definition find_next (g : InterfGraph.dict) : option reg :=
   find (is_simplicialb g) (InterfGraph.keys g).
 \end{lstlisting}
@@ -440,7 +441,7 @@ In the extracted code, upon receiving a \texttt{None} constructor we will to thr
 
 Now we proceed with the step function for the \texttt{eliminate} function:
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Definition eliminate_step
   (g : InterfGraph.dict) : option (reg * InterfGraph.dict):=
   match find_next g with
@@ -454,9 +455,9 @@ It takes an interference graph which is chordal, finds a simplicial node, remove
 Note that, if the precondition of the input graph being chordal is met, the function will never return the \texttt{None} constructor. Furthermore, the resulting graph will also be chordal.
 We will talk more about the postconditions in \Cref{cha:verification}.
 
-Finally, we can move into the \texttt{eliminate} function, that is, the function for obtaining the PEO:
+Finally, we can move into the \texttt{eliminate} function, that is, the function for obtaining the \gls{peo}:
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Function eliminate
   (g : InterfGraph.dict) {measure InterfGraph.size g} : list reg :=
   match eliminate_step g with
@@ -466,7 +467,7 @@ Function eliminate
 \end{lstlisting}
 
 The definition of the function is straightforward, we take an interference graph, and we remove the simplicial nodes until it becomes the empty graph, constantly appending the removed node at the end of the list.
-As was mentioned in \Cref{subsec:funterm} Coq has trouble automatically verifying the termination of this function, because of that we add an annotation that tells it that the fixed point lies in the size of the interference graph. We will write a proof for this in \Cref{cha:verification}.
+As was mentioned in \Cref{subsec:funterm} Rocq has trouble automatically verifying the termination of this function, because of that we add an annotation that tells it that the fixed point lies in the size of the interference graph. We will write a proof for this in \Cref{cha:verification}.
 
 \subsection{Coloring}
 \label{subsec:coloring}
@@ -482,9 +483,9 @@ Now take into consideration a single iteration of the algorithm mentioned at the
 
 Given the intuition behind the algorithm, we start with the definition of the \texttt{Coloring} object as a dictionary from virtual registers to physical registers, this object will be the output of the coloring phase.
 
-As we mentioned before, at each position of the \textit{reversed} PEO we find a node whose colored neighborhood forms a clique, because of that, in order to assign this node a new color we pick a random one from the complement of the neighborhood colors. We define a function specifically for this purpose.
+As we mentioned before, at each position of the \textit{reversed} \gls{peo} we find a node whose colored neighborhood forms a clique, because of that, in order to assign this node a new color we pick a random one from the complement of the neighborhood colors. We define a function specifically for this purpose.
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Definition preg_compl (colors : set preg) : option preg :=
   match IRPreg.regs_diff preg_allowed colors with
   | nil => None
@@ -496,7 +497,7 @@ Here, given a set of registers we calculate the difference with the set of regis
 
 Now we use the function we just defined to color a single node given its interference graph and the current coloring:
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Definition get_color
   (v : IRVreg.reg) (g : InterfGraph.dict) (c : Coloring.dict)
   : option IRPreg.reg :=
@@ -507,7 +508,7 @@ Definition get_color
 
 Finally, we introduce the function to obtain the complete coloring of the interference graph, the procedure is the same as explained at the beginning of \Cref{subsec:coloring}.
 
-\begin{lstlisting}[style=Coq]
+\begin{lstlisting}[style=Rocq]
 Definition get_coloring (peo : list IRVreg.reg) (g : InterfGraph.dict)
   : option Coloring.dict :=
   let fix get_coloring_aux (peo : list IRVreg.reg) (c : Coloring.dict)
@@ -546,7 +547,7 @@ There are two ways of solving these cases, we could try to find a sequence of sw
 \[
   r_1 \to \texttt{tmp}, r_3 \to r_1, r_2 \to r_3, \texttt{tmp} \to r_2
 \]
-Now that we are able to compile a parallel move we visit the control flow graph while translating one section of $\phi$-instructions at a time.
+Now that we are able to compile a parallel move we visit the \gls{cfg} while translating one section of $\phi$-instructions at a time.
 We identify three different cases when performing the destruction, one for each jump instruction:
 \begin{itemize}
   \item When visiting a basic block that ends with a \texttt{CondJump} we need to translate two different parallel moves, one for each of the two successors, since we cannot append two different parallel move translations into the current block, as they would conflict with each other, we need to create two new basic blocks, each of which contains the corresponding translation of the parallel move and then an unconditional jump to the successor. We also give them the same label as the current block but, this time, we use constructors \texttt{Point1} and \texttt{Point2} to avoid a collision with the current block, which uses the \texttt{Normal} constructor;
@@ -609,7 +610,7 @@ In particular, we extract the following functions:
   \item \texttt{Vm.run} to interpret our programs;
   \item \texttt{LivenessInfo.analyze\_program} to perform liveness analysis;
   \item \texttt{InterfGraph.get\_ig} to obtain the interference graph;
-  \item \texttt{Peo.eliminate} to obtain the PEO;
+  \item \texttt{Peo.eliminate} to obtain the \gls{peo};
   \item \texttt{Color.get\_coloring} to construct our coloring map;
   \item \texttt{Color.color\_program} to translate the program into one using physical registers;
   \item \texttt{Destruct.ssa\_destruct} to remove the $\phi$-instructions;
@@ -635,7 +636,7 @@ let regassign irvreg_program =
 This function accepts a program written in JAIR and returns an equivalent program without $\phi$-instructions and using only x86-64 registers.
 Note that, at line 8, we panic if we are not able to perform the coloring due to a high number of variables, this is required since we do not perform spilling.
 
-Finally, with this representation, the generation of assembly code is straightforward, we simply perform a DFS on the control flow graph and generate the assembly code for each basic block we visit.
+Finally, with this representation, the generation of assembly code is straightforward, we simply perform a DFS on the \gls{cfg} and generate the assembly code for each basic block we visit.
 In particular, for our implementation, we chose to emit assembly with the Netwide Assembler (NASM) syntax.
 
 The following OCaml function does exactly so, writing the assembly code of a program into the specified output channel:
@@ -680,9 +681,45 @@ let gen_irpreg_program out program =
 ;;
 \end{lstlisting}
 
-At line 14 we generate the label using the \texttt{gen\_label} function, then, at line 17 we generate the body of instructions of the basic block, and finally, at line 20, we generate the jump instruction. We continue with the recursion until we either encounter a \texttt{Ret} instruction or an already visited block.
+At line 14 we generate the label using the \texttt{gen\_label} function, then, at line 17 we generate the body of instructions of the basic block, and finally, at line 20, we generate the jump instruction. We continue with the recursion until we either reach a \texttt{Ret} instruction or we encounter an already visited block.
 
-To show an example of a translated program, we take the program defined in \Cref{fig:example-jair} and compile it. The result is shown in \Cref{fig:example-nasm}.
+A subtle detail, when translating from JAIR to x86-64 assembly, is that our language is a three-address code representation, while x86-64 assembly only allows instructions to have a maximum of two arguments.
+To handle cases where the operands of an instruction are greater than two we introduce the following function:
+
+\begin{lstlisting}[style=OCaml]
+let gen_3ac_2ac out opcode r r' v =
+  if r = r' then
+    gen_bininst out opcode  (string_of_reg r) (string_of_val v)
+  else
+    match v with
+
+    (* r(0) <- r(1) / i(100) *)
+    | IRPreg.Imm x ->
+      gen_bininst out MOV     (string_of_reg r) (string_of_reg r');
+      gen_bininst out opcode  (string_of_reg r) (string_of_int x)
+
+    (* r(0) <- r(1) / r(2) *)
+    | IRPreg.Reg r'' ->
+      gen_bininst out MOV     (string_of_reg tmp) (string_of_reg r');
+      gen_bininst out opcode  (string_of_reg tmp) (string_of_reg r'');
+      gen_bininst out MOV     (string_of_reg r)   (string_of_reg tmp);
+
+    (* r(0) <- r(1) / p(100) *)
+    | IRPreg.Ptr p ->
+      gen_bininst out MOV     (string_of_reg r) (string_of_reg r');
+      gen_bininst out opcode  (string_of_reg r) (string_of_int p)
+;;
+\end{lstlisting}
+
+We handle three different cases, depending on the last operand:
+\begin{itemize}
+  \item If the third operand is an immediate value, we move the second register into the destination, and finally we perform the operation with the immediate value;
+  \item If the third operand is another register, we move the second register into the temporary register, we perform the operation with the third register, and finally we move the temporary register into the destination register;
+  \item If the third operand is a pointer, the behavior is the same as in the first point;
+\end{itemize}
+Now, because the temporary register, defined by \texttt{tmp}, is used only in the blocks introduced by the SSA destruction phase, it is safe to use it inside \texttt{Normal} blocks, since, during the coloring, we exclude \texttt{tmp} from the list of colors.
+
+To show an example of a program translation, we take the program defined in \Cref{fig:example-jair} and compile it. The result is shown in \Cref{fig:example-nasm}.
 
 \begin{figure}[ht]
 \begin{lstlisting}[style=NASM]
@@ -718,6 +755,6 @@ L2.2:
 	mov	rcx,	rax
 	jmp	L2
 \end{lstlisting}
-\caption{Assembly translation of the program in \Cref{fig:example-jair}}
+\caption{Assembly translation of the Fibonacci function}
 \label{fig:example-nasm}
 \end{figure}
