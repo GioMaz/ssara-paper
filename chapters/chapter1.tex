@@ -4,14 +4,14 @@
 \label{cha:intro}
 
 While high-level programming languages such as C and OCaml allow developers to define an arbitrary number of variables, actual hardware imposes strict limits. For example, the x86 architecture provides only 8 general-purpose registers.
-In order to handle this limitation, a register allocation pass is required. Usually register allocation is made up of different steps, namely spilling, register assignment, and coalescing. For this project we focus on register assignment, which is a crucial part of the pipeline.
+In order to handle this limitation, a register allocation pass is required. Usually register allocation consists of different steps, namely spilling, register assignment, and coalescing. For this project we focus on register assignment, which is a crucial part of the pipeline.
 
-To clearly state the purpose of register assignment take into consideration the following example, suppose you have the C function shown in \Cref{fig:cbefore} and you wanted to compile it for an architecture with three register. The non-trivial goal of register assignment is to figure out which physical register needs to be used to store a new variable whenever the total number of variables is greater than the number of physical registers. The resulting program after register assignment is shown in \Cref{fig:cafter}, in particular, we can see that at line 5 the register \texttt{r2} is reused as its content is no longer needed.
+To clearly state the purpose of register assignment, take into consideration the following example, suppose we have the C function shown in \Cref{fig:cbefore}, and we wanted to compile it for an architecture with three register. The non-trivial goal of register assignment is to figure out which physical register needs to be used to store a new variable whenever the total number of variables is greater than the number of physical registers. The resulting program after register assignment is shown in \Cref{fig:cafter}. In particular, we can see that at line 5, the register \texttt{r2} is reused, as its content is no longer needed.
 
 \begin{minipage}{0.48\linewidth}
 \centering
 \lstset{style=C}
-\begin{lstlisting}[caption={Original C program.}, label={fig:cbefore}]
+\begin{lstlisting}[caption={C program returning $2a+b$.}, label={fig:cbefore}]
 int foo() {
     int a = get_a();
     int b = get_b();
@@ -27,30 +27,31 @@ int foo() {
 \lstset{style=C}
 \begin{lstlisting}[caption={Same C program after register assignment.}, label={fig:cafter}]
 int foo() {
-    int r1 = get_a();
-    int r2 = get_b();
-    int r3 = r1 + r2;
-    r2 = r1 + r3;
-    return r2;
+    int $r_1$ = get_a();
+    int $r_2$ = get_b();
+    int $r_3$ = $r_1$ + $r_2$;
+    $r_2$ = $r_1$ + $r_3$;
+    return $r_2$;
 }
 \end{lstlisting}
 \end{minipage}
 
-To obtain the aforementioned behaviour, several register assignment implementations were developed, for example some verified compilers such as as CompCert [cit] or CakeML [cit] perform register assignment use respectively translation validation and non-SSA graph coloring.
-To the best of our knowledge, no formally verified implementation of SSA-based register assignment via graph coloring exists, which is precisely the problem this project addresses. To this end, we make the following contributions:
+Any compiler has at least a basic implementation of register assignment. Nonetheless, very few compilers are verified. The CompCert verified compiler [cit], for example, does not actually verify register assignment, instead, it verifies a separate checker that validates the algorithm's output. CakeML, instead, implements fully verified linear-scan register assignment which, despite having linear time complexity, is a greedy algorithm and may produce suboptimal assignments.
+Despite being NP-complete, the register assignment problem is solvable optimally, and, in polynomial time, for a specific subset of intermediate representations, namely representations that use single static assignment (SSA) form.
+To the best of our knowledge, no mechanized implementation of SSA-based register assignment currently exists. This is precisely the gap our project tries to address. To this end we make the following contributions:
 
 \begin{itemize}
-    \item We introduce JAIR (Just Another Intermediate Representation), a language in SSA form that takes into consideration the stages of the register assignment pipeline, from liveness analysis to SSA destruction, in \Cref{sec:jair}, we define JAIR with the goal of making illegal SSA states irrepresentable, we also discuss the feasability of this task. At the same time we try to define a data structure that is suitable for visits to extract liveness information and perform other tasks up to code generation;
+    \item We introduce JAIR (Just Another Intermediate Representation), an intermediate representation in SSA form that takes into consideration the stages of the register assignment pipeline, from liveness analysis to SSA destruction. In \Cref{sec:jair}, we define the syntax of JAIR with the goal of making illegal SSA states unrepresentable, we also discuss the feasibility of this task. At the same time we try to define JAIR as a data structure that is suitable for traversals, so that later we can extract liveness information and perform other tasks up to code generation;
 
-    \item In \Cref{sec:jair-int}, we define the semantics of JAIR by creating a virtual machine that simulates the execution of JAIR programs;
+    \item \Cref{sec:jair-int} defines the semantics of JAIR by creating a virtual machine that simulates the execution of JAIR programs;
 
-    \item In \Cref{sec:liveness}, \Cref{sec:ra}, and \Cref{sec:destruct} we implement an already existing register assignment algorithm for JAIR programs in Coq;
+    \item In \Cref{sec:liveness}, \Cref{sec:ra}, and \Cref{sec:destruct} we implement a register assignment algorithm for JAIR programs in Coq/Rocq;
 
-    \item In \Cref{sec:extraction} we develop our pipeline to extract OCaml. Then we compare the output of a program executed on the previously defined virtual machine \textit{before} register assignment, with the output of the same program run on an x86-64 machine \textit{after} register assignment;
+    \item In \Cref{sec:extract} we extract the whole pipeline into OCaml and bundle it into a single procedure, namely \texttt{regassign}. After that, we compare the output of programs executed on the previously defined virtual machine \textit{before} register assignment, with the output of the same programs run on an x86-64 machine \textit{after} register assignment;
 
-    \item In \Cref{cha:verification} we verify the register assignment pass, that is, we prove the termination and the {\color{red} partial correctness} of the core of the coloring algorithm;
+    \item In \Cref{cha:verification} we verify the register assignment pass. That is, we prove the termination and the {\color{red} partial correctness} of the core of the coloring algorithm;
 \end{itemize}
 
-In the remainder of the thesis, we discuss related work in \Cref{cha:relwork}, give some general backround in sec \Cref{cha:background}, and finally conclude in \Cref{cha:conclusions}.
+In the remainder of the thesis, we discuss related work in \Cref{cha:relwork}, give some general background in sec \Cref{cha:background}, and finally conclude in \Cref{cha:conclusions}.
 
 % At a high level, the process begins with liveness analysis, then we proceed with register allocation and end with SSA destruction. The whole pipeline is developed using the Coq Proof Assistant, which allows us to verify the correctness of the core register assignment algorithm. Once verified, the code is then extracted into an efficient language, OCaml, and compiled into a working binary.

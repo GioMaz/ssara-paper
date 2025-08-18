@@ -40,6 +40,7 @@
 
 \lstdefinestyle{C}{
     language=C,
+    mathescape=true,
     tabsize=4,
     keywordstyle=\color{blue},              % Keywords in blue
     commentstyle=\color{green!50!black},    % Comments in green
@@ -90,7 +91,7 @@
   morestring=[b]",
   morestring=[d]',
   morekeywords=[1]{
-    let, rec, and, val, type, module, struct, sig, class, object, method,
+    let, rec, in, and, val, type, module, struct, sig, class, object, method,
     inherit, virtual, functor, include, open, external, exception
   },
   morekeywords=[2]{
@@ -98,7 +99,7 @@
     begin, end, fun, function
   },
   morekeywords=[3]{true, false},
-  morekeywords=[4]{in, of, mutable, private, new, lazy, as, assert}
+  morekeywords=[4]{of, mutable, private, new, lazy, as, assert}
 }
 
 \lstdefinestyle{OCaml}{

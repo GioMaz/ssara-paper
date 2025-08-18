@@ -214,15 +214,18 @@ Definition undefined_variable : block :=
 Similarly, uniqueness of labels is not enforced, which can lead to conflicting block labels, as shown in the following example:
 
 \begin{lstlisting}[style=Coq]
-CoFixpoint double_lbl_1 : block := Block (Normal 0) [] [] (Jump double_lbl_2)
-  with double_lbl_2 : block := Block (Normal 0) [] [] (Jump double_lbl_1).
+CoFixpoint double_lbl_1 : block :=
+  Block (Normal 0) [] [] (Jump double_lbl_2)
+with double_lbl_2 : block :=
+  Block (Normal 0) [] [] (Jump double_lbl_1).
 \end{lstlisting}
 
 Finally, $\phi$-instructions may include inconsistent or invalid arguments. For example, the number of the predecessors listed in a $\phi$-instruction may not match the actual number of predecessors:
 
 \begin{lstlisting}[style=Coq]
 Definition ill_formed_phi_2 : block :=
-  Block (Normal 1) [r(1) <- phi [(0, 0);]] [] (ret r(0)).
+  Block (Normal 1) [
+    r(1) <- phi [(1, 5); (2, 6); (3; 7)]] [] (ret r(0)).
 Definition ill_formed_phi_1 : block :=
   Block (Normal 0) [] [] (Jump ill_formed_phi_2).
 \end{lstlisting}
@@ -535,21 +538,21 @@ In particular we extract the following functions:
   \item \texttt{InterfGraph.get\_ig} to obtain the interference graph;
   \item \texttt{Peo.eliminate} to obtain the PEO;
   \item \texttt{Color.get\_coloring} to construct our coloring map;
-  \item \texttt{Color.color\_program} to convert our program from the virtual registers implementation to one using physical registers implementation;
+  \item \texttt{Color.color\_program} to translate the program into one using physical registers;
   \item \texttt{Destruct.ssa\_destruct} to remove the $\phi$-instructions;
 \end{itemize}
 
 After extracting we create a function to compose our pipeline:
 
 \begin{lstlisting}[style=OCaml]
-let regalloc irvreg_program =
+let regassign irvreg_program =
   let (programinfo, _) = analyze_program irvreg_program fuel_analyze in
   let interfgraph = get_ig programinfo in
   let peo = eliminate interfgraph in
   let coloring =
     match get_coloring peo interfgraph with
     | Some c -> c
-    | None -> failwith "Not enough registers to complete allocation"
+    | None -> failwith "Not enough registers to complete assignment"
   in
   let irpreg_program = color_program coloring irvreg_program in
   ssa_destruct fuel_destruct  irpreg_program
