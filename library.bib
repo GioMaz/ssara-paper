@@ -21,6 +21,31 @@ registers.  The soundness of the algorithm was mechanically proved
 using the Coq proof assistant.}
 }
 
+@article{Rideau-Serpette-Leroy-parmov,
+  author = {Laurence Rideau and Bernard P. Serpette and
+                         Xavier Leroy},
+  title = {Tilting at windmills with {Coq}:
+                         formal verification of a compilation algorithm
+                         for parallel moves},
+  journal = {Journal of Automated Reasoning},
+  year = {2008},
+  volume = 40,
+  number = 4,
+  pages = {307--326},
+  xtopic = {compcert},
+  urllocal = {https://xavierleroy.org/publi/parallel-move.pdf},
+  urlpublisher = {https://doi.org/10.1007/s10817-007-9096-8},
+  doi = {10.1007/s10817-007-9096-8},
+  abstract = {
+This article describes the formal verification of a compilation algorithm
+that transforms parallel moves (parallel assignments between variables)
+into a semantically-equivalent sequence of elementary moves.
+Two different specifications of the algorithm are given: an inductive
+specification and a functional one, each with its correctness proofs.
+A functional program can then be extracted and integrated in the
+Compcert verified compiler.}
+}
+
 @article{10.1145/2578855.2535841,
 author = {Kumar, Ramana and Myreen, Magnus O. and Norrish, Michael and Owens, Scott},
 title = {CakeML: a verified implementation of ML},
@@ -50,4 +75,41 @@ keywords = {ML, compiler bootstrapping, compiler verification, machine code veri
   organization = {Intel Corporation},
   address      = {2200 Mission College Blvd., Santa Clara, CA 95054-1549, USA},
   language     = {English}
+}
+
+@CONFERENCE{HGG:2006:RA_SSA,
+  author = {Sebastian Hack and Daniel Grund and Gerhard Goos},
+  title = {{R}egister {A}llocation for {P}rograms in {SSA}-{F}orm},
+  booktitle = {Compiler Construction},
+  booktitle_short = {CC},
+  year = {2006},
+  editor = {Andreas Zeller and Alan Mycroft},
+  volume = {3923},
+  series = {Lecture Notes In Computer Science},
+  pages = {247--262},
+  month = {March},
+  publisher = {Springer},
+  webpdf = {https://compilers.cs.uni-saarland.de/papers/ssara.pdf},
+  abstract = {As register allocation is one of the most important phases in optimizingcompilers,
+much work has been done to improve its quality and speed. We present
+a novel register allocation architecture for programs in SSA-form
+which simplifies register allocation significantly. We investigate certain
+properties of SSA-programs and their interference graphs, showing
+that they belong to the class of chordal graphs. This leads to a quadratic-time
+optimal coloring algorithm and allows for decoupling the tasks of
+coloring, spilling and coalescing completely. After presenting heuristic
+methods for spilling and coalescing, we compare our coalescing heuristic
+to an optimal method based on integer linear programming.},
+doi = {10.1007/11688839_20},
+journal = {Lecture Notes In Computer Science}
+}
+
+@book{golumbic2004algorithmic,
+  title={Algorithmic Graph Theory and Perfect Graphs},
+  author={Golumbic, M.C.},
+  isbn={9780080526966},
+  series={Annals of Discrete Mathematics},
+  url={https://books.google.it/books?id=8xo-VrWo5_QC},
+  year={2004},
+  publisher={North Holland}
 }

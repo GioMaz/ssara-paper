@@ -23,6 +23,7 @@
 \usepackage{physics}
 \usepackage{braket}
 \usepackage{mathpartir}
+\usepackage{bussproofs}
 
 % Front page
 \usepackage{frontespizio}
@@ -175,18 +176,10 @@
 \usepackage{cleveref}
 \usepackage{glossaries}
 \makeglossaries
+\newacronym{jair}{JAIR}{Just Another Intermediate Representation}
 \newacronym{ssa}{SSA}{Static Single Assignment}
 \newacronym{peo}{PEO}{Perfect Elimination Order}
 \newacronym{cfg}{CFG}{Control Flow Graph}
-\newglossaryentry{set}{name={set},description={a collection of objects}}
-\newglossaryentry{due}{name={second},description={second example}}
-\newglossaryentry{emptyset}{name={\ensuremath{\emptyset}},description={the empty set}}
-\longnewglossaryentry{fishage}{name={Fish Age}}{
-    A common name for the Devonian geologic period spanning from the end of the Silurian Period to the beginning of the Carboniferous Period.
-    
-    This age was known for its remarkable variety of fish species.
-}
-\newglossaryentry{elite}{name={{é}lite},description={select group or class}}
 
 \usepackage{graphicx} % Required for inserting images
 \usepackage[T1]{fontenc}
@@ -217,6 +210,7 @@
 \newcommand{\EC}[2]{\mathbb{E} \left[ #1 | #2\right]}
 \newcommand{\betaold}{\beta^{\text{old}}}
 \newcommand{\sigmamat}{\mathbf{\Sigma}}
+\newcommand{\addvertex}[3]{#1 \oplus_{#2} #3}
 \usepackage{todonotes}
 \usepackage{imakeidx}
 \usepackage{subcaption}

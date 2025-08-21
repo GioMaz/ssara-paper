@@ -41,11 +41,11 @@ For arbitrary programs, register assignment is NP-complete. However, this proble
 To the best of our knowledge, no mechanized implementation of SSA-based register assignment currently exists. To this end, we make the following contributions:
 
 \begin{itemize}
-    \item We introduce JAIR (Just Another Intermediate Representation), an intermediate representation in SSA form that takes into consideration the stages of the register assignment pipeline, from liveness analysis to SSA destruction. In \Cref{sec:jair}, we define the syntax of JAIR and discuss the feasibility of making illegal SSA-form programs unrepresentable.
+    \item We introduce \gls{jair} (\glsentrylong{jair}), an intermediate representation in SSA form that takes into consideration the stages of the register assignment pipeline, from liveness analysis to SSA destruction. In \Cref{sec:jair}, we define the syntax of \gls{jair} and discuss the feasibility of making illegal SSA-form programs unrepresentable.
 
-    \item \Cref{sec:jair-int} defines the dynamic semantics of JAIR as a virtual machine that simulates the execution of JAIR programs;
+    \item \Cref{sec:jair-int} defines the dynamic semantics of \gls{jair} as a virtual machine that simulates the execution of \gls{jair} programs;
 
-    \item In \Cref{sec:liveness}, \Cref{sec:ra}, and \Cref{sec:destruct} we implement a register assignment algorithm for JAIR programs in Rocq;
+    \item In \Cref{sec:liveness}, \Cref{sec:ra}, and \Cref{sec:destruct} we implement a register assignment algorithm for \gls{jair} programs in Rocq;
 
     \item In \Cref{sec:extract}, we extract the whole pipeline as OCaml and bundle it into a single procedure, namely \texttt{regassign}. After that, we compare the output of programs executed on the previously defined virtual machine \textit{before} register assignment, with the output of the same programs run on an x86-64 machine \textit{after} register assignment;
 
