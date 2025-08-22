@@ -4,9 +4,9 @@
 \label{cha:intro}
 
 While high-level programming languages such as C and OCaml allow developers to define an arbitrary number of variables, actual hardware imposes strict limits. For example, the x86 architecture provides only 8 general-purpose registers \cite{intel_sdm_vol1}.
-In order to handle this limitation, a register allocation pass is required. Register allocation consists of different steps, namely spilling, register assignment, and coalescing. For this project we focus on register assignment, which is a crucial part of the pipeline.
+In order to handle this limitation, a register allocation pass is required. Register allocation consists of different steps, namely spilling, \gls{ra}, and coalescing. For this project we focus on \gls{ra}, which is a crucial part of the pipeline.
 
-To clearly state the purpose of register assignment, take into consideration the following example: Suppose we have the C function shown in \Cref{fig:cbefore}, and we want to compile it for an architecture with three register. The non-trivial goal of register assignment is to identify which physical register needs to be used to store a new variable whenever the total number of variables is greater than the number of physical registers. The resulting program after register assignment is shown in \Cref{fig:cafter}. In particular, we see that at line 5, the register $r_2$ is reused, as its content is no longer needed.
+To clearly state the purpose of \gls{ra}, take into consideration the following example: Suppose we have the C function shown in \Cref{fig:cbefore}, and we want to compile it for an architecture with three registers. The non-trivial goal of \gls{ra} is to identify which physical register needs to be used to store a new variable whenever the total number of variables is greater than the number of physical registers. The resulting program after \gls{ra} is shown in \Cref{fig:cafter}. In particular, we see that at line 5, the register $r_2$ is reused, as its content is no longer needed.
 
 \begin{minipage}{0.48\linewidth}
 \centering
@@ -25,7 +25,7 @@ int foo() {
 \begin{minipage}{0.48\linewidth}
 \centering
 \lstset{style=C}
-\begin{lstlisting}[caption={Same C program after register assignment.}, label={fig:cafter}]
+\begin{lstlisting}[caption={Same C program after \gls{ra}.}, label={fig:cafter}]
 int foo() {
     int $r_1$ = get_a();
     int $r_2$ = get_b();
@@ -36,22 +36,21 @@ int foo() {
 \end{lstlisting}
 \end{minipage}
 
-Any compiler has at least a basic implementation of register assignment, some even employ a verified implementation of this phase. The CompCert \cite{Rideau-Leroy-regalloc} verified compiler, for example, does not actually verify register assignment, instead, it verifies a separate checker that validates the output of the algorithm. CakeML \cite{10.1145/2578855.2535841}, instead, implements fully verified linear-scan register assignment which, despite having linear time complexity, is a greedy algorithm and may produce suboptimal assignments.
-For arbitrary programs, register assignment is NP-complete. However, this problem is solvable optimally and in polynomial time for programs in \gls{ssa} form.
-To the best of our knowledge, no mechanized implementation of SSA-based register assignment currently exists. To this end, we make the following contributions:
+% Not any compiler, fix the `insteads`, talk about why SSA is relevant, create chapter for JAIR, chapter for algo, chapter for extraction, use grammarly
+Many compilers implement at least a basic version of \gls{ra}, while some even provide a verified implementation. For instance, the CompCert \cite{Rideau-Leroy-regalloc} compiler uses a verified checker to validate the output of its \gls{ra} algorithm, whereas CakeML \cite{10.1145/2578855.2535841} implements a fully verified linear-scan \gls{ra}. Despite the widespread use of \gls{ssa} in compilers, such as Clang and GCC, no verified implementation of \gls{ssa}-based \gls{ra} currently exists. To address this gap, we make the following contributions:
 
 \begin{itemize}
-    \item We introduce \gls{jair} (\glsentrylong{jair}), an intermediate representation in SSA form that takes into consideration the stages of the register assignment pipeline, from liveness analysis to SSA destruction. In \Cref{sec:jair}, we define the syntax of \gls{jair} and discuss the feasibility of making illegal SSA-form programs unrepresentable.
+    \item We introduce \gls{jair} (\glsentrylong{jair}), an intermediate representation in SSA form that takes into consideration the stages of the \gls{ra} pipeline, from liveness analysis to SSA destruction. In \Cref{sec:jair}, we define the syntax of \gls{jair} and discuss the feasibility of making illegal SSA-form programs unrepresentable.
 
     \item \Cref{sec:jair-int} defines the dynamic semantics of \gls{jair} as a virtual machine that simulates the execution of \gls{jair} programs;
 
-    \item In \Cref{sec:liveness}, \Cref{sec:ra}, and \Cref{sec:destruct} we implement a register assignment algorithm for \gls{jair} programs in Rocq;
+    \item In \Cref{cha:ra}, we implement a \gls{ra} algorithm for \gls{jair} programs in Rocq;
 
-    \item In \Cref{sec:extract}, we extract the whole pipeline as OCaml and bundle it into a single procedure, namely \texttt{regassign}. After that, we compare the output of programs executed on the previously defined virtual machine \textit{before} register assignment, with the output of the same programs run on an x86-64 machine \textit{after} register assignment;
+    \item In \Cref{cha:extraction}, we extract the whole pipeline as OCaml and bundle it into a single procedure, namely \texttt{regassign}. After that, we compare the output of programs executed on the previously defined virtual machine \textit{before} \gls{ra}, with the output of the same programs run on an x86-64 machine \textit{after} \gls{ra};
 
-    \item In \Cref{cha:verification} we discuss the verification of our register assignment pass. That is, we prove the termination and the partial correctness;
+    \item In \Cref{cha:verification}, we discuss the verification of our \gls{ra} pass. That is, we prove the termination and the partial correctness;
 \end{itemize}
 
-In the remainder of the thesis, we discuss related work in \Cref{cha:relwork}, give some general background in \Cref{cha:background}, and finally conclude in \Cref{cha:conclusions}.
+In the remainder of the thesis, we give some general background in \Cref{cha:background}, we discuss related work in \Cref{cha:relwork}, and conclude in \Cref{cha:conclusions}.
 
-% At a high level, the process begins with liveness analysis, then we proceed with register allocation and end with SSA destruction. The whole pipeline is developed using the Rocq Proof Assistant, which allows us to verify the correctness of the core register assignment algorithm. Once verified, the code is then extracted into an efficient language, OCaml, and compiled into a working binary.
+% At a high level, the process begins with liveness analysis, then we proceed with register allocation and end with SSA destruction. The whole pipeline is developed using the Rocq Proof Assistant, which allows us to verify the correctness of the core \gls{ra} algorithm. Once verified, the code is then extracted into an efficient language, OCaml, and compiled into a working binary.

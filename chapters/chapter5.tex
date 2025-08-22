@@ -1,4 +1,159 @@
 % Errors
 
-\chapter{Related Work}
-\label{cha:relwork}
+\chapter{Extraction}
+\label{cha:extraction}
+
+After defining all the steps of our register assignment pipeline, we extract them into OCaml.
+In particular, we extract the following functions:
+\begin{itemize}
+  \item \texttt{Vm.run} to interpret our programs;
+  \item \texttt{LivenessInfo.analyze\_program} to perform liveness analysis;
+  \item \texttt{InterfGraph.get\_ig} to obtain the interference graph;
+  \item \texttt{Peo.eliminate} to obtain the \gls{peo};
+  \item \texttt{Color.get\_coloring} to construct our coloring map;
+  \item \texttt{Color.color\_program} to translate the program into one using physical registers;
+  \item \texttt{Destruct.ssa\_destruct} to remove the $\phi$-instructions;
+\end{itemize}
+
+After extracting we compose the various steps of our pipeline into the \texttt{regassign} function:
+
+\begin{lstlisting}[style=OCaml]
+let regassign irvreg_program =
+  let (programinfo, _) = analyze_program irvreg_program fuel_analyze in
+  let interfgraph = get_ig programinfo in
+  let peo = eliminate interfgraph in
+  let coloring =
+    match get_coloring peo interfgraph with
+    | Some c -> c
+    | None -> failwith "Not enough registers to complete assignment"
+  in
+  let irpreg_program = color_program coloring irvreg_program in
+  ssa_destruct fuel_destruct irpreg_program
+;;
+\end{lstlisting}
+
+This function accepts a program written in \gls{jair} and returns an equivalent program without $\phi$-instructions and using only x86-64 registers.
+Note that, at line 8, we panic if we are not able to perform the coloring due to a high number of variables, this is required since we do not perform spilling.
+
+Finally, with this representation, the generation of assembly code is straightforward, we simply perform a DFS on the \gls{cfg} and generate the assembly code for each basic block we visit.
+In particular, for our implementation, we chose to emit assembly with the Netwide Assembler (NASM) syntax.
+
+The following OCaml function does exactly so, writing the assembly code of a program into the specified output channel:
+
+\begin{lstlisting}[style=OCaml]
+let gen_irpreg_program out program =
+  let visited = ref LblSet.empty in
+  let rec gen_irpreg_program_aux out program =
+    let IRPreg.Block (l, ps, is, j) = Lazy.force_val program in
+
+    if not (LblSet.mem l !visited) then (
+      visited := LblSet.add l !visited;
+
+      if not (List.is_empty ps) then
+        failwith
+          "Malformed program, should not contain phi instructions";
+
+      (* Generate label *)
+      gen_label out l;
+
+      (* Generate instructions *)
+      gen_insts out is;
+
+      (* Generate jump instruction *)
+      match Lazy.force_val j with
+      | IRPreg.CondJump (c, r, v, b1, b2) ->
+        gen_condjump out c r v b1 b2;
+        gen_irpreg_program_aux out b1;
+        gen_irpreg_program_aux out b2;
+
+      | IRPreg.Jump b ->
+        gen_jump out b;
+        gen_irpreg_program_aux out b;
+
+      | IRPreg.Ret r ->
+        gen_ret out r
+    )
+  in
+  gen_section out ".text";
+  gen_start out program;
+  gen_irpreg_program_aux out program
+;;
+\end{lstlisting}
+
+At line 14 we generate the label using the \texttt{gen\_label} function, then, at line 17 we generate the body of instructions of the basic block, and finally, at line 20, we generate the jump instruction. We continue with the recursion until we either reach a \texttt{Ret} instruction or we encounter an already visited block.
+
+A subtle detail, when translating from \gls{jair} to x86-64 assembly, is that our language is a three-address code representation, while x86-64 assembly only allows instructions to have a maximum of two arguments.
+To handle cases where the operands of an instruction are greater than two we introduce the following function:
+
+\begin{lstlisting}[style=OCaml]
+let gen_3ac_2ac out opcode r r' v =
+  if r = r' then
+    gen_bininst out opcode  (string_of_reg r) (string_of_val v)
+  else
+    match v with
+
+    (* r(0) <- r(1) / i(100) *)
+    | IRPreg.Imm x ->
+      gen_bininst out MOV     (string_of_reg r) (string_of_reg r');
+      gen_bininst out opcode  (string_of_reg r) (string_of_int x)
+
+    (* r(0) <- r(1) / r(2) *)
+    | IRPreg.Reg r'' ->
+      gen_bininst out MOV     (string_of_reg tmp) (string_of_reg r');
+      gen_bininst out opcode  (string_of_reg tmp) (string_of_reg r'');
+      gen_bininst out MOV     (string_of_reg r)   (string_of_reg tmp);
+
+    (* r(0) <- r(1) / p(100) *)
+    | IRPreg.Ptr p ->
+      gen_bininst out MOV     (string_of_reg r) (string_of_reg r');
+      gen_bininst out opcode  (string_of_reg r) (string_of_int p)
+;;
+\end{lstlisting}
+
+We handle three different cases, depending on the last operand:
+\begin{itemize}
+  \item If the third operand is an immediate value, we move the second register into the destination, and finally we perform the operation with the immediate value;
+  \item If the third operand is another register, we move the second register into the temporary register, we perform the operation with the third register, and finally we move the temporary register into the destination register;
+  \item If the third operand is a pointer, the behavior is the same as in the first point;
+\end{itemize}
+Now, because the temporary register, defined by \texttt{tmp}, is used only in the blocks introduced by the SSA destruction phase, it is safe to use it inside \texttt{Normal} blocks, since, during the coloring, we exclude \texttt{tmp} from the list of colors.
+
+To show an example of a program translation, we take the program defined in \Cref{fig:example-jair} and compile it. The result is shown in \Cref{fig:example-nasm}.
+
+\begin{figure}[ht]
+\begin{lstlisting}[style=NASM]
+section .text
+global _start
+_start:
+	jmp	L1
+L1:
+	mov	rdx,	0
+	mov	rcx,	1
+	mov	rbx,	12
+	mov	rax,	rdx
+	mov	rdx,	rcx
+	mov	rcx,	rax
+	jmp	L2
+L2:
+	mov	rax,	rdx
+	add	rax,	rcx
+	mov	rcx,	rax
+	sub	rbx,	1
+	cmp	rbx,	1
+	je	L2.1
+	jmp	L2.2
+L2.1:
+	jmp	L3
+L3:
+	mov	rax,	60
+	mov	rdi,	rcx
+	syscall
+L2.2:
+	mov	rax,	rdx
+	mov	rdx,	rcx
+	mov	rcx,	rax
+	jmp	L2
+\end{lstlisting}
+\caption{Assembly translation of the Fibonacci function}
+\label{fig:example-nasm}
+\end{figure}

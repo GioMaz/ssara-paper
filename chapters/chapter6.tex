@@ -1,4 +1,74 @@
 % Errors
 
-\chapter{Conclusions}
-\label{cha:conclusions}
+\chapter{Verification}
+\label{cha:verification}
+
+In this chapter we present the reasoning behind the verification of the core components of our register assignment pipeline, namely, the verification of the termination and the partial correctness of the function for obtaining the \gls{peo}, defined in \Cref{subsec:peo}. Here, we report the same theorems and the respective proofs that can be found in \texttt{Peo.v} in their mechanized version.
+
+\section{Termination of \texttt{eliminate}}
+
+As mentioned in \Cref{subsec:funterm}, to allow a function definition, Rocq requires a proof of its termination, for functions that use structural recursion the proof of termination is inferred automatically, for other functions instead, an explicit proof of termination is required. This is the case for \texttt{eliminate}.
+
+Take the \texttt{eliminate} function defined in \Cref{subsec:peo}, we recursively check the result of \texttt{eliminate\_step}, and if the result is \texttt{Some} we continue with the recursion, otherwise we return an empty list. Proving termination for this function consists in proving that, after an iteration, the size of the graph decreases at least by one. Being the size a natural number, at some point it will reach a fixed point, that is, the \texttt{O} constructor.
+
+\begin{theorem}[Termination of \texttt{eliminate}]
+    Let graph $G = (V, E)$, after performing one elimination step, we obtain $G' = (V', E')$ such that $V' \subsetneq V$.
+\end{theorem}
+\begin{proof}
+    After one iteration of the algorithm we encounter two possible cases, if no simplicial node is found, we terminate the function immediately. Otherwise, we found a simplicial node $u$, along with the new graph $G' = (V', E')$, in this case $V' = V \setminus \{ u \}$. Finally, since $u \in V$ we can say that $V' \subsetneq V$.
+\end{proof}
+
+\section{Soundness of \texttt{is\_simplicialb}}
+
+We start by providing a constructive definition of the $\mathrm{Simplicial}$ predicate. After that, we introduce the soundness theorem for the \texttt{is\_simplicialb} function, defined in \Cref{subsec:peo}, with respect to $\mathrm{Simplicial}$.
+
+Before defining the predicate, let us introduce some notation.
+
+\begin{definition}[Universal vertex over a subgraph]
+    Let $G = (V, E)$ and $H$ be a subgraph of $G$ with vertex set $V(H)$, we define the graph with a universal vertex $u$ over $H$ as:
+    \[
+        \addvertex{G}{H}{u} := (\{ V \cup \{ u \}, E \cup \{ \{ u, v \} \;|\; v \in V(H) \} \})
+    \]
+\end{definition}
+
+\begin{definition}[Simplicial]
+The predicate $\mathrm{Simplicial}(u, G)$ on the nodes of a graph is defined inductively by the following rules:
+\begin{mathpar}
+    \inferrule*[Right=SimplicialSingleton]
+        {u \not \in G}
+        {\mathrm{Simplicial}(u, G + u)}
+    \\
+    \inferrule*[Right=SimplicialNode]
+        {\mathrm{Simplicial}(u, G) \\ u \neq v}
+        {\mathrm{Simplicial}(u, G + v )}
+    \\
+    \inferrule*[Right=SimplicialEdge]
+        {\mathrm{Simplicial}(u, G) \\ u \neq v' \\ u \neq v''}
+        {\mathrm{Simplicial}(u, G + \{ v', v'' \} )}
+    \\
+    \inferrule*[Right=SimplicialNeighbor]
+        {\mathrm{Simplicial}(u, G)}
+        {\mathrm{Simplicial}(u, \addvertex{G}{N(u)}{v})}
+\end{mathpar}
+\end{definition}
+
+\begin{theorem}[Soundness of \texttt{is\_simplicialb}]\label{thm:sbsound}
+    Let $G = (V, E)$ and $u \in G$ such that \texttt{is\_simplicialb} returns \texttt{true}, then $\mathrm{Simplicial}(u, G)$ holds.
+\end{theorem}
+
+\begin{corollary}[Soundness of \texttt{eliminate\_step}]\label{cor:essound1}
+    Let $G = (V, E)$, if \texttt{eliminate\_step} returns node $u$, then $\mathrm{Simplicial}(u, G)$.
+\end{corollary}
+\begin{proof}
+    Assume that \texttt{eliminate\_next} returns node $u$, this means that the boolean property \texttt{is\_simplicialb} is \texttt{true} for that node. It follows immediately from \Cref{thm:sbsound} that $\mathrm{Simplicial}(u, G)$.
+\end{proof}
+
+\Cref{thm:sbsound} and \Cref{cor:essound1} are rather important, as they prove that the nodes inside a \gls{peo} are simplicial with respect to the graph where they are extracted.
+
+\section{Completeness of \texttt{is\_simplicialb}}
+
+Now, we introduce the completeness theorem for \texttt{is\_simplicialb} with respect to $\mathrm{Simplicial}$.
+
+\begin{theorem}[Completeness of \texttt{is\_simplicialb}]
+
+\end{theorem}

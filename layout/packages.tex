@@ -60,8 +60,8 @@
 }
 
 \lstdefinelanguage{Rocq}{
-    morekeywords=[1]{Definition, Inductive, CoInductive, Class, Instance, Fixpoint, CoFixpoint, Function},
-    morekeywords=[2]{forall, exists, match, with, end, if, then, else, let, in, fix, fun},
+    morekeywords=[1]{Definition, Inductive, CoInductive, Class, Instance, Fixpoint, CoFixpoint, Function, Proof, Qed},
+    morekeywords=[2]{forall, exists, match, with, end, if, then, else, let, in, fix, fun, intros, unfold, destruct, lia},
     morekeywords=[3]{Prop, Type, Set, True, False, nat, bool, option, list},
     sensitive=true,
     morecomment=[l]{(*},
@@ -176,6 +176,7 @@
 \usepackage{cleveref}
 \usepackage{glossaries}
 \makeglossaries
+\newacronym{ra}{RA}{Register Assignment}
 \newacronym{jair}{JAIR}{Just Another Intermediate Representation}
 \newacronym{ssa}{SSA}{Static Single Assignment}
 \newacronym{peo}{PEO}{Perfect Elimination Order}

@@ -7,33 +7,86 @@ In this chapter, we present the tools and concepts employed throughout this proj
 
 \section{The Rocq Proof Assistant}
 
-The register assignment pipeline is implemented in Rocq, an interactive proof assistant based on a functional language called Gallina. Other than exposing a language for performing computation, Rocq also provides us with tools for formal verification, such as the possibility to define and prove facts about functions and structures.
+Rocq is an interactive proof assistant. It provides a specification language called Gallina, this language is used for defining functions, types, and proposition. It also provides a language for writing proofs, called Ltac, and finally a language for interacting with the Rocq kernel through commands, called Vernacular. It is also possible to extract Gallina definitions into optimized languages such as OCaml, Haskell or Lisp.
 
 \subsection{Function Termination}
 \label{subsec:funterm}
 
-A fundamental feature of Rocq is its enforcement of termination in all function definitions. Recursive functions are typically defined using the \texttt{Fixpoint} keyword, which requires pattern matching over inductive types. Rocq statically checks that, for each recursive call, there exists a structurally decreasing argument, guaranteeing termination by eventually reaching a base case.
+Recursive functions are typically defined using the \texttt{Fixpoint} keyword. With this keyword Rocq statically checks that, for each recursive call, there exists a structurally decreasing argument, guaranteeing termination by eventually reaching a base case.
 
-Some recursive functions, however, do not conform to this criterion. Take for example the following function:
+Some recursive functions, however, do not conform to this criterion. Take for example the function for performing division by repeated subtraction:
 
 \begin{lstlisting}[style=Rocq]
-Fixpoint collatz (n : nat) (steps: nat) : nat :=
-  match n with
-  | O => steps
+Fixpoint div (a b : nat) : nat :=
+  match b with
+  | 0 => 0
   | _ =>
-    if Nat.even n
-    then collatz (n / 2) (S steps)
-    else collatz (n * 3 + 1) (S steps)
+    if b <? a
+    then 1 + div (a - b) b
+    else 0
   end.
 \end{lstlisting}
 
-This function takes a natural number \texttt n and returns the number of iterations required for the Collatz step function to converge. Here, Rocq is not able to automatically prove termination.
+As we see, at line 6, we perform a recursive call, passing \texttt{(a - b)} as an argument. It is obvious that the argument decreases on each recursive call. However, Rocq cannot guess it, as it is only capable of identifying a decreasing argument if it is the parameter of a constructor. Because of that the previous definition generates an error.
+To solve such cases, in our project, we use two common workarounds.
 
-For cases like the previous one, we are offered two common workarounds:
-The first approach is fuel-based recursion, it consists in adding an artificial decreasing argument (commonly named \texttt{fuel}) to the function signature. The function then proceeds recursively while decrementing \texttt{fuel} at each step. Termination is guaranteed when \texttt{fuel} reaches zero. The drawback is that an upper bound on the number of iterations must be known in advance, which may be difficult to determine and, if underestimated, can lead to incomplete computations.
-The second approach, instead, consists in using the texttt{Function} keyword with a termination proof. This alternative allows for the definition of more general recursive functions as long as we provide an explicit proof of their termination. Usually the proof of termination consists in proving the that at least one argument has a property that decreases after each iteration;
+% There are more, say that in this theses you only use these 2 workaround
+The first approach we use is fuel-based recursion, it consists in adding an artificial decreasing argument, commonly named \texttt{fuel}, to the function signature.
+Here is the division function with a definition that is accepted by Roqc:
 
-In this project, for functions whose proof is non-trivial we usually resort to the fuel-based approach, expect for the coloring algorithm, for which we provide a termination proof.
+\begin{lstlisting}[style=Rocq]
+Fixpoint div (a b : nat) (fuel : nat) : nat :=
+  match fuel with
+  | 0 => 0
+  | S fuel' =>
+    match b with
+    | 0 => 0
+    | _ =>
+      if b <? a
+      then 1 + div (a - b) b
+      else 0
+    end
+  end.
+\end{lstlisting}
+
+As we see, at line 4, we get the decremented value \texttt{fuel'}, this value is then passed as an argument in the recursive call at line 9.
+Termination is guaranteed when \texttt{fuel} reaches zero, matching with the case at line 3.
+The drawback of this method, is that an upper bound on the number of recursive calls must be known in advance, which may be difficult to determine and, if underestimated, can lead to an incomplete computation.
+
+The second approach we use consists in using the \texttt{Function} keyword with a termination proof. The goal is automatically generated by Rocq, and it aims to show that at least one argument has a property that decreases after each iteration.
+Take the same example as before:
+
+\begin{lstlisting}[style=Rocq]
+Function div (a b : nat) {measure id a} : nat :=
+  match b with
+  | 0 => 0
+  | _ =>
+    if b <? a
+    then 1 + div (a - b) b
+    else 0
+  end.
+\end{lstlisting}
+
+In the function signature, we introduced an annotation that states that the decreasing argument lies in the identity of \texttt a.
+Intuitively, this is clearly the case, since at line 6 we pass \texttt{(a - b)}, which (because \texttt b is greater than zero) is strictly smaller that \texttt a.
+Now, we have to prove this formally, using the goal introduced by Rocq:
+
+\begin{lstlisting}[style=Rocq]
+forall a b n : nat, b = S n -> (S n <? a) = true -> id (a - S n) < id
+\end{lstlisting}
+
+For which we provide the following proof:
+
+\begin{lstlisting}[style=Rocq]
+Proof.
+  intros a b n H1 H2.
+  destruct a.
+  - unfold Nat.ltb, Nat.leb in H2. discriminate.
+  - unfold id. lia.
+Qed.
+\end{lstlisting}
+
+Here, at line 2, we introduce the quantified variables and the two assumptions into the context. At line 3 we perform case analysis on the argument \texttt a. In the first case, at line 4, we show that \texttt{a = 0}, contradicts the other assumptions. Finally, at line 5, we use the \texttt{lia} tactic to automatically prove that, for the case \texttt{a > 0} the goal is valid.
 
 \subsection{OCaml Extraction}
 \label{subsec:extract}
@@ -42,71 +95,147 @@ In this project, for functions whose proof is non-trivial we usually resort to t
 \section{\glsentrylong{ssa} Form}
 \label{sec:ssa}
 
-The intermediate representation utilizes \gls{ssa} form due to its structural properties that, among other benefits, greatly simplify register assignment. An SSA program satisfies the following constraints:
+% Any intermediate representation, not just the
+% Split the sentence, say one thing per sentence
+% Move cfg before ssa, so that you use cfg to define ssa
+% Wrap cfg and ssa around definitions
+% Describe ssa figure example and add the c version on the left
+% Back up the fact that phi instructions parallel execution is important (either citation or !example! or it is common knowledge)
 
-\begin{itemize}
-    \item Each variable is assigned exactly once;
-    \item Every use of a variable is dominated by its unique definition.
-\end{itemize}
+Before talking about \gls{ssa} form, we need to introduce some other definitions.
 
-\subsection{Control Flow Graphs}
-\label{subsec:cfg}
-
-To represent the control flow of a program, we employ a \gls{cfg}. A \gls{cfg} is defined as the triple $(B, CF, \textbf{start})$, where:
-
-\begin{itemize}
-    \item $B$ is the set of basic blocks, each consisting of a sequence of instructions terminated by either a jump instruction or an halt instruction;
-    \item $CF \subseteq B \times B$ is the control flow relation that defines the allowed transitions between blocks;
+\begin{definition}[\glsentrylong{cfg}]
+  A \gls{cfg} is defined as the triple $(B, \text{CF}, \textbf{start})$, where:
+  \begin{itemize}
+    \item $B$ is the set of basic blocks, each consisting of a sequence of instructions;
+    \item $\text{CF} \subseteq B \times B$ is the control flow relation that defines the allowed transitions between blocks;
     \item $\textbf{start} \in B$ is the entry point of the program;
-\end{itemize}
+  \end{itemize}
+\end{definition}
 
-We will use this definition of a \gls{cfg} during the implementation to define programs written in our intermediate representation.
+\begin{definition}[Dominance]
+  Given a \gls{cfg} and two instructions $i_1$ and $i_2$, we say that $i_1$ dominates $i_2$, iff for every path from \textbf{start} to $i_2$ we encounter $i_1$ at least once.
+\end{definition}
 
-\subsection{$\phi$-Instructions}
-\label{subsec:phi}
+\begin{definition}[\gls{ssa}]\label{def:ssa}
+  We say that a \gls{cfg} is in \gls{ssa} form, iff the following two properties are respected:
+  \begin{itemize}
+    \item Each variable is defined exactly once;
+    \item Every use of a variable is dominated by its definition.
+  \end{itemize}
+\end{definition}
 
-Due to the single assignment policy of SSA, merging variables from multiple control paths requires the use of a $\phi$-instructions. A $\phi$-instruction has the general form:
-
-\[
-x \leftarrow \phi(y_1, y_2, , \dots, y_n)
-\]
-
-Where each argument indicates that the value of $y_i$ should be assigned to $x$ if the control comes from the $i$-th incoming control flow path. Given the previous definition it follows that $\phi$-instructions must be placed at the beginning of a basic block, and are executed during the jump from the predecessor block.
-
-An example of the usage of the $\phi$-instruction is shown in \Cref{fig:phi-usage}.
+Now, suppose we want to translate the C program shown in \Cref{fig:ssabefore} into its \gls{ssa} form representation, shown in \Cref{fig:ssaafter}. First, we need to initialize the variable \texttt a. However, because of the first rule of \Cref{def:ssa}, we define it as a unique variable $a_0$ in the \textbf{start} block. After that, we branch into two different basic blocks, in the first one we increase the value of $a_0$ by one and, in the second one, we increase it by two. Again, because of the first rule we define one new variable for each block, respectively $a_1$ and $a_2$.
+Now are presented with a problem, because we had to define the two variables $a_1$ and $a_2$ separately, we need to return either $a_1$ if the control flow comes from $B_1$, or $a_2$ if it comes from $B_2$. To address this problem, we introduce the $\phi$-instruction. Looking at \Cref{fig:ssaafter}, we use the $\phi$-instruction at block $B_3$ to say that: if the control flow comes from $B_1$, then we assign $a_1$ to $a_3$, if instead it comes from $B_2$, we assign $a_2$ to $a_3$. Finally, we return $a_3$.
 
 \begin{figure}[ht]
-    \centering
-    \begin{tikzpicture}[
-        node distance=10mm,
-        every node/.style={draw, align=left, inner sep=4pt},
-        >={Stealth}
-    ]
-    \node (entry)   at (0, 0)       {$r_1 \leftarrow 5$};
-    \node (b1)      at (-1.5, -1.5) {$r_2 \leftarrow r_1 + 1$};
-    \node (b2)      at (1.5, -1.5)  {$r_3 \leftarrow r_1 + 2$};
-    \node (end)     at (0, -3)      {$r_4 \leftarrow \phi(r_2, r_3)$ \\ ret $r_4$};
+\centering
+\begin{minipage}{0.38\textwidth}
+\lstset{style=C}
+\begin{lstlisting}[caption={C program merging variables at line 8}, label={fig:ssabefore}]
+int foo() {
+    int a = 5;
+    if (a < 10) {
+        a += 1;
+    } else {
+        a += 2;
+    }
+    return a;
+}
+\end{lstlisting}
+\end{minipage}
+\hfill
+\begin{minipage}{0.58\textwidth}
+  \centering
+  \caption{Same C program translated into a \gls{ssa} form representation}
+  \begin{tikzpicture}[
+      node distance=10mm,
+      every node/.style={draw, align=left, inner sep=4pt},
+      >={Stealth}
+  ]
+  \node (entry)   at (0, 0)       [draw, label=above:\textbf{start}]  {$a_0 \leftarrow 5$};
+  \node (b1)      at (-1.5, -1.5) [draw, label=above:$B_1$]           {$a_1 \leftarrow a_0 + 1$};
+  \node (b2)      at (1.5, -1.5)  [draw, label=above:$B_2$]           {$a_2 \leftarrow a_0 + 2$};
+  \node (end)     at (0, -3)      [draw, label=above:$B_3$]             {$a_3 \leftarrow \phi(a_1, a_2)$ \\ ret $a_3$};
 
-    \draw[->] (entry) -- (b1);
-    \draw[->] (entry) -- (b2);
-    \draw[->] (b1) -- (end);
-    \draw[->] (b2) -- (end);
-    \end{tikzpicture}
-    \caption{Example of the usage of a $\phi$-instruction}
-    \label{fig:phi-usage}
+  \draw[->] (entry) -- (b1);
+  \draw[->] (entry) -- (b2);
+  \draw[->] (b1) -- (end);
+  \draw[->] (b2) -- (end);
+  \end{tikzpicture}
+  \label{fig:ssaafter}
+\end{minipage}
 \end{figure}
 
-We may also find multiple $\phi$-instructions grouped together at the beginning of a block, in that case we have to remember an important property, which is the fact that all the assignments are executed in parallel. This aspect must be preserved during SSA destruction, as the order of the assignments may influence the resulting program by causing overwrites.
+In other instances of \gls{ssa} programs, we may find multiple $\phi$-instructions grouped together at the beginning of a basic block. Semantically, those instructions are executed in parallel.
+Take for example the \gls{ssa} block in \Cref{fig:par1} where we merge the control flow from two predecessors. If we come from the first one we assign $a_1$ to $a_3$ and $a_2$ to $a_4$, whereas, if we come from the second one, we assign $a_2$ to $a_3$ and $a_1$ to $a_4$. Now, in \Cref{fig:par2}, we show a valid \gls{ra}, where $r_1$ is assigned to $a_1$ and $a_3$, while $r_2$ is assigned to $a_2$ and $a_4$.
+Finally, in \Cref{fig:par3}, we try to convert the $\phi$-instructions into a sequence of moves, depending on the predecessor. If we come from $B_1$, we don't need to do anything.
+Instead, if we come from $B_2$, we need to perform a swap of $r_1$ and $r_2$. A literal translation, as shown in the example, doesn't help, as in that case we are overwriting the content of $r_1$. If instead, we take the two instructions in $B_2$, and we execute them parallelly, we will match the intended behavior defined initially.
+
+\begin{figure}[ht]
+\centering
+\begin{minipage}{0.30\textwidth}
+  \centering
+  \caption{\gls{ssa} basic block with multiple $\phi$-instructions}
+  \label{fig:par1}
+  \begin{tikzpicture}
+  \node (b1) at (-1.5, 0) [minimum height=0.8cm] {$\dots$};
+  \node (b2) at (1.5, 0) [minimum height=0.8cm] {$\dots$};
+  \node (end) at (0, -2) [draw, align=left, inner sep=4pt] {$a_3 \leftarrow \phi(a_1, a_2)$ \\ $a_4 \leftarrow \phi(a_2, a_1)$ \\ $a_5 \leftarrow a_3 + a_4$ \\ ret $a_5$};
+
+  \draw[->] (b1) -- (end);
+  \draw[->] (b2) -- (end);
+  \end{tikzpicture}
+\end{minipage}
+\hfill
+\begin{minipage}{0.30\textwidth}
+  \centering
+  \caption{Same basic block after \gls{ra} with three physical registers}
+  \label{fig:par2}
+  \begin{tikzpicture}
+  \node (b1) at (-1.5, 0) [minimum height=0.8cm] {$\dots$};
+  \node (b2) at (1.5, 0) [minimum height=0.8cm] {$\dots$};
+  \node (end) at (0, -2) [draw, align=left, inner sep=4pt] {$r_1 \leftarrow \phi(r_1, r_2)$ \\ $r_2 \leftarrow \phi(r_2, r_1)$ \\ $r_3 \leftarrow r_1 + r_2$ \\ ret $r_3$};
+
+  \draw[->] (b1) -- (end);
+  \draw[->] (b2) -- (end);
+  \end{tikzpicture}
+\end{minipage}
+\hfill
+\begin{minipage}{0.30\textwidth}
+  \centering
+  \caption{Same basic block after (incorrect) $\phi$-instruction translation}
+  \label{fig:par3}
+  \begin{tikzpicture}
+
+  \node (b1) at (-1.5, 0) [draw, label=above:$B_1$, align=left, inner sep=4pt]
+    {$\dots$ \\ $r_1 \leftarrow r_1$ \\ $r_2 \leftarrow r_2$};
+  \node (b2) at (1.5, 0)  [draw, label=above:$B_2$, align=left, inner sep=4pt]
+    {$\dots$ \\ $r_1 \leftarrow r_2$ \\ $r_2 \leftarrow r_1$};
+  \node (end) at (0, -2)  [draw, align=left, inner sep=4pt]
+    {$r_3 \leftarrow r_1 + r_2$ \\ ret $r_3$};
+
+  \draw[->] (b1) -- (end);
+  \draw[->] (b2) -- (end);
+  \end{tikzpicture}
+\end{minipage}
+\end{figure}
 
 \section{Register Assignment}
 \label{sec:ra}
 
 Register assignment is the process of assigning a potentially unbounded number of virtual register to a limited number of physical registers. A well-known approach reduces this problem to graph coloring of the interference graph.
 
+% split the sentence, mention that g is an interf graph, maybe using a bullet list
 \begin{definition}[Interference Graph]\label{def:ig}
-    Given a \gls{cfg}, a graph $G = (V, E)$ where $V$ is the set of variables used by the instructions of the \gls{cfg}, and $\{ u, v \} \in E$, iff variables $u$ and $v$ are both live for at least one instruction of the \gls{cfg}.
+  Given a \gls{cfg}, its interference graph is $G = (V, E)$ where
+  \begin{itemize}
+  \item $V$ is the set of variables used by the instructions of the \gls{cfg}
+  \item $E$ is the set of edges such that $\{ u, v \} \in E$, iff variables $u$ and $v$ are both live for at least one instruction of the \gls{cfg}.
+  \end{itemize}
 \end{definition}
 
+% Give this immediate
 It is immediate to see that a $k$-coloring of the interference graph, where each color represents a physical register, corresponds to a feasible register assignment for a machine with $k$ registers.
 
 \subsection{Register Assignment in SSA Form}
@@ -114,32 +243,32 @@ It is immediate to see that a $k$-coloring of the interference graph, where each
 
 Before talking about register assignment in SSA form we need to define some properties of nodes and graphs.
 
-\begin{definition}[Simplicial node]\label{def:simplicial}
-    Given a graph $G = (V, E)$, a node $u \in E$ is simplicial, iff the neighborhood of $u$ is a clique.
+\begin{definition}[Simplicial Node]\label{def:simplicial}
+  Given a graph $G = (V, E)$, a node $u \in E$ is simplicial, iff the neighborhood of $u$ is a clique.
 \end{definition}
 
-\begin{definition}[Chordal graph]\label{def:chordal}
-    A graph for which there exists a \gls{peo}, that is, there exists a simplicial node such that, if we remove that node the graph is still chordal.
+\begin{definition}[Chordal Graph]\label{def:chordal}
+  A graph for which there exists a \gls{peo}, that is, there exists a simplicial node such that, if we remove that node the graph is still chordal.
 \end{definition}
 
 The reason why chordal graphs are particularly appealing is the result of the two following theorems:
 
 \begin{theorem}[Chordality]
-    The interference graph of a program in SSA form is chordal~\cite{HGG:2006:RA_SSA}.
+  The interference graph of a program in SSA form is chordal~\cite{HGG:2006:RA_SSA}.
 \end{theorem}
 
-\begin{theorem}[Coloring of chordal graphs]
-    The problem of graph coloring for chordal graphs can be solved optimally and in polynomial time~\cite{golumbic2004algorithmic}.
+\begin{theorem}[Coloring of Chordal Graphs]
+  The problem of graph coloring for chordal graphs can be solved optimally and in polynomial time~\cite{golumbic2004algorithmic}.
 \end{theorem}
 
 From this follows that, while register assignment is NP-complete for arbitrary representations, this problem becomes solvable optimally and in polynomial time for programs in SSA form.
 
 Finally, some other definitions that we will use later, during the description of the algorithm.
 
-\begin{definition}[Chromatic number]\label{def:chromatic}
-    Given a graph $G = (V, E)$, its chromatic number $\omega(G)$ is the minimum number of colors that can be assigned to the nodes of $G$ such that no two adjacent nodes have the same color.
+\begin{definition}[Chromatic Number]\label{def:chromatic}
+  Given a graph $G = (V, E)$, its chromatic number $\omega(G)$ is the minimum number of colors that can be assigned to the nodes of $G$ such that no two adjacent nodes have the same color.
 \end{definition}
 
-\begin{theorem}[Chromatic number of chordal graphs]\label{thm:chordal-chromatic}
-    Given a chordal graph $G$, its chromatic number is equal to the size of the largest clique in $G$~\cite{golumbic2004algorithmic}.
+\begin{theorem}[Chromatic Number of Chordal Graphs]\label{thm:chordal-chromatic}
+  Given a chordal graph $G$, its chromatic number is equal to the size of the largest clique in $G$~\cite{golumbic2004algorithmic}.
 \end{theorem}

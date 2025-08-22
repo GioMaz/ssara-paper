@@ -1,14 +1,14 @@
 % Errors
 
-\chapter{Implementation}
-\label{cha:implementation}
+\chapter{\gls{jair}}
+\label{cha:jair}
 
-In this chapter, we provide an overview of the design and implementation choices that guided the development of the register assignment pipeline and the underlying language \gls{jair}. The implementation is structured in a modular way, beginning with the definition of the syntax and semantics of the language. We then detail the steps of register assignment, namely liveness analysis, graph coloring, and SSA destruction.
+In this chapter, we provide an overview of the design and implementation choices that guided the development of the register assignment pipeline and the underlying language \gls{jair}. The implementation is structured in a modular way, beginning with the definition of the syntax and semantics of the language. We then detail the steps of register assignment, namely liveness analysis, graph coloring, and \gls{ssa} destruction.
 
-\section{\gls{jair}}
+\section{The \gls{jair} Syntax}
 \label{sec:jair}
 
-The primary goal in defining the syntax of \gls{jair} is to leverage Rocq’s type system to rule out as many ill-formed SSA programs as possible, as discussed in \Cref{sec:ssa}. We begin by describing how registers are represented in our language.
+The primary goal in defining the syntax of \gls{jair} is to leverage the type system of Rocq to rule out as many ill-formed \gls{ssa} programs as possible, as discussed in \Cref{sec:ssa}. We begin by describing how registers are represented in our language.
 
 \subsection{Registers}
 
@@ -48,7 +48,7 @@ Throughout the implementation, every register is understood to be either virtual
 Initially, we opted for a label-less representation of basic blocks.
 Later in the project we saw the necessity of introducing them for this specific reason: the $\phi$-instructions require labels to identify the incoming control flow since predecessors of a basic blocks are not ordered. Without labels a $\phi$-instruction would not know which one of the predecessors each of its arguments is bound to.
 
-An alternative solution would be (given the single definition policy of SSA) to go back in the control flow to find which of the arguments of the $\phi$-instruction is defined. This approach proved too complicated, so we adopted labels, at the cost of introducing possible inconsistencies in the representation that we will later discuss in \Cref{subsec:limitations}.
+An alternative solution would be (given the single definition policy of \gls{ssa}) to go back in the control flow to find which of the arguments of the $\phi$-instruction is defined. This approach proved too complicated, so we adopted labels, at the cost of introducing possible inconsistencies in the representation that we will later discuss in \Cref{subsec:limitations}.
 
 \begin{lstlisting}[style=Rocq]
 Inductive lbl : Type :=
@@ -57,7 +57,7 @@ Inductive lbl : Type :=
   | Point2 : nat -> lbl.
 \end{lstlisting}
 
-The label type is defined with three constructors. The reason is explained more in detail in \Cref{sec:destruct}, but for now let's just say that the SSA destruction phase introduces additional basic blocks (at most two for each preexisting basic block). With the constructors \texttt{Point1} and \texttt{Point2} we identify these additional basic blocks in order to avoid collisions, whereas with the \texttt{Normal} constructor we identify the blocks that already existed before the destruction phase.
+The label type is defined with three constructors. The reason is explained more in detail in \Cref{sec:destruct}, but for now let's just say that the \gls{ssa} destruction phase introduces additional basic blocks (at most two for each preexisting basic block). With the constructors \texttt{Point1} and \texttt{Point2} we identify these additional basic blocks in order to avoid collisions, whereas with the \texttt{Normal} constructor we identify the blocks that already existed before the destruction phase.
 
 \subsection{ALU Instructions}
 
@@ -139,7 +139,7 @@ Definition program : Type := block.
 
 Where the starting point of the \gls{cfg} is the first block we encounter during a visit and the blocks set of the \gls{cfg} is the set of blocks reachable from the first block.
 
-Now that we covered the main parts of the \gls{jair} implementation, we demonstrate the capabilities of our representation in \Cref{fig:example-jair} with an example of the Fibonacci function along with the same example in a general SSA form representation.
+Now that we covered the main parts of the \gls{jair} implementation, we demonstrate the capabilities of our representation in \Cref{fig:example-jair} with an example of the Fibonacci function along with the same example in a \gls{ssa} form representation.
 
 \begin{figure}[ht]
 \centering
@@ -188,7 +188,7 @@ Definition example_block_1 : block :=
   \draw[->] (loop) -- (end);
 \end{tikzpicture}
 \end{minipage}
-\caption{Code for the Fibonacci function in \gls{jair} along with the same code in a general SSA form representation}
+\caption{Code for the Fibonacci function in \gls{jair} along with the same code in a \gls{ssa} form representation}
 \label{fig:example-jair}
 \end{figure}
 
@@ -197,7 +197,7 @@ Definition example_block_1 : block :=
 
 Despite our efforts to use Rocq's type system to rule out incorrect programs, certain ill-formed programs cannot be excluded purely by the syntax, we now provide examples of such cases.
 
-A fundamental problem is that the two core policies of an SSA form representation are not enforced, namely multiple assignments to the same register and the use of undefined registers are still possible:
+A fundamental problem is that the two core policies of an \gls{ssa} form representation are not enforced, namely multiple assignments to the same register and the use of undefined registers are still possible:
 
 \begin{lstlisting}[style=Rocq]
 Definition double_assignment : block :=
@@ -289,7 +289,7 @@ The recursive function considers three cases:
 \begin{itemize}
   \item If the memory is empty, then the value we are trying to retrieve is zero;
   \item If the index is zero, we return the value of the current memory location;
-  \item Otherwise, if we haven't yet reached the desired address, we perform a recursive call on the remaining memory;
+  \item Otherwise, if we have not reached the desired address yet, we perform a recursive call on the remaining memory;
 \end{itemize}
 
 Finally, the function for writing a value to a memory location is defined as:
@@ -312,9 +312,9 @@ Definition set_cell (m : vm) (i : nat) (c : cell) : vm :=
 The recursive function handles four cases:
 \begin{itemize}
   \item If the memory is empty, but we reached the intended address, we expand the memory with one last cell where we store the content;
-  \item If the memory is empty, and we haven't yet reached the desired address, we create an empty cell and make a recursive call;
+  \item If the memory is empty, and we have not reached the desired address yet, we create an empty cell and make a recursive call;
   \item If we reached the intended address, we overwrite the current content with the new content;
-  \item Finally, if we haven't yet reached the intended address, we perform a recursive call on the remaining memory;
+  \item Finally, if we have not reached the intended address yet, we perform a recursive call on the remaining memory;
 \end{itemize}
 
 The only remaining task is to define a function that simulates program execution, ideally we would want that function to have type \texttt{vm $\to$ program $\to$ vm} taking the initial state of the virtual machine and the program as inputs and returning the new state of the virtual machine.
@@ -341,420 +341,3 @@ Fixpoint run (m : vm) (p : program) (fuel : nat) : vm :=
 The procedure works this way: if we are out of fuel we terminate, and we return the current state of the virtual machine, otherwise we proceed with the computation.
 We run the body of instructions of the current block with the function \texttt{run\_insts}, yielding a new state of the virtual machine. We then treat each jump instruction differently, in the case of a conditional jump we evaluate the condition with the \texttt{eval\_cond} function, in the other two cases no evaluation is needed. Finally, before jumping to the next block we execute its $\phi$-instructions, to do so we call the \texttt{run\_phis} function passing as arguments the virtual machine, the current block and the successor block.
 We continue with the computation until we either run out of fuel or we reach the \texttt{Ret} instruction, saving the result of the program to register zero.
-
-\section{Liveness Analysis}
-\label{sec:liveness}
-
-In this phase, we compute the set of live variables at each program point. This step is crucial for determining which variables interfere and, therefore constitute an edge of the interference graph.
-
-Generally a liveness analysis algorithm works this way:
-we start from the last instruction of the program and go back to the start instruction in a post-order fashion, while we do that we compute the following sets for each instruction:
-\begin{itemize}
-  \item \texttt{live\_in[i]} which contains the variables that are live \textit{before} the execution of instruction \texttt i;
-  \item \texttt{live\_out[i]} which instead contains the variables live \textit{after} the execution of \texttt i;
-  \item \texttt{def[i]} are the variables created by the instruction, in our language this set is either a singleton or the empty set as we can only define at most one variable per instruction;
-  \item \texttt{use[i]} are the variables used as arguments by the instruction, at most two in our language since that is the maximum arity of our expressions;
-\end{itemize}
-
-Since in our language instructions can be of three different kinds we define different dataflow equations for each instruction type.
-
-We start by defining the dataflow equations for the ALU instructions:
-\begin{align*}
-  \texttt{live\_in[i]} &= \texttt{use[i]} \cup (\texttt{live\_out[i]} \setminus \texttt{def[i]}) \\
-  \texttt{live\_out[i]} &= \bigcup \limits_{\texttt j \in \texttt{succ[i]}} \texttt{live\_in[j]}
-\end{align*}
-
-Since the computation is done backwards we start with the \texttt{live\_out[i]} set, which must contain the variables that are required by the successors of \texttt i. The
-\texttt{live\_in[i]} set must instead contain the variables required by \texttt i, identified by \texttt{use[i]} and the variables that are required by the next instructions, identified by \texttt{live\_out[i]} $\setminus$ \texttt{def[i]}.
-Here there are some things to note, first of all that the set $\texttt{live\_out[i\_n]} = \emptyset$ where \texttt{i\_n} is the last instruction of the program, since no variables are live after the program ends, we start from this assumption at the beginning of the procedure.
-
-For jump instructions instead, the dataflow equations are similar, we just simplify the first dataflow equation by removing \texttt{def[i]} as jump instructions never define variables.
-
-Now, because of the different semantics of $\phi$-instructions we must define their dataflow equations separately. In particular, we define the liveness information of the whole section instead of for single $\phi$-instructions, this is because, as was explained in \Cref{subsec:phi}, these instructions are executed parallelly.
-We compute:
-\begin{align*}
-  \texttt{live\_in[ps]} &= \texttt{phi\_defs[ps]} \cup \texttt{live\_out[ps]} \\
-  \texttt{live\_out[ps]} &= \bigcup \limits_{\texttt j \in \texttt{succ[ps]}} \texttt{live\_in[j]}
-\end{align*}
-where \texttt{phi\_defs[ps]} contains the left-hand sides of the $\phi$-instructions.
-
-Starting again with \texttt{live\_out[ps]}, we define it as the union of the variables that are live before the first ALU instruction of the block. \texttt{live\_in[ps]} is instead the set of variables that are defined in the $\phi$-instructions together with the variables that are required after the $\phi$-instructions, intuitively the variables in \texttt{phi\_defs[ps]} are already defined before reaching the start of the block since their execution happens during the jump.
-
-\section{Register Assignment}
-\label{sec:ra}
-
-As explained in \Cref{subsec:ssara} register assignment is considered equivalent to the task of graph coloring of the interference graph, but, before starting with the coloring let's recall \Cref{def:ig}. A chordal graph is a graph for which there exists a \gls{peo}, that is, there exists a simplicial node such that, if we remove that node the graph is still chordal and, the \gls{peo} is then the ordering in which those nodes are removed.
-To perform the coloring we then proceed this way:
-\begin{itemize}
-  \item We use the liveness information to build the interference graph;
-  \item We iteratively remove the simplicial nodes from the interference graph obtaining a \gls{peo};
-  \item We reinsert the nodes of the \gls{peo} in \textit{reverse} order into the interference graph and, at the same time, we assign them a color that is not already taken by their (partially colored) neighborhoods;
-\end{itemize}
-
-We now proceed with the implementation of the steps that we just described.
-
-\subsection{Building the Interference Graph}
-
-Now that we extracted the liveness information from our \gls{cfg} we use it to build the interference graph.
-The reasoning behind the creation of the interference graph is straightforward, we go through every live set computed in the previous step, and we insert a clique containing its elements. This follows intuitively by the fact that if two variables are live in the same instruction then they interfere as per \Cref{def:ig}.
-
-The function used to populate the interference graph is the following:
-
-\begin{lstlisting}[style=Rocq]
-Definition get_ig (pi : ProgramInfo.dict) : InterfGraph.dict :=
-  fold_left
-    (fun g l =>
-      match ProgramInfo.get pi l with
-      | Some (BlockInfo iis) => ig_insert_instinfos g iis
-      | None => g
-      end)
-    (ProgramInfo.keys pi)
-    InterfGraph.empty.
-\end{lstlisting}
-
-Where \texttt{ig\_insert\_instinfos} is a function that given an interference graph and a list of live sets returns a graph where a clique containing the elements of the set is added for each element of the list.
-
-\subsection{Obtaining a \glsentrylong{peo}}
-\label{subsec:peo}
-
-Recalling \Cref{def:simplicial} we implement a function that determines whether a node of a graph is simplicial:
-
-\begin{lstlisting}[style=Rocq]
-Definition is_simplicialb (g : InterfGraph.dict) (r : reg) : bool :=
-  let nbors := InterfGraph.get g r in
-  regs_mem r (InterfGraph.keys g) &&
-  is_cliqueb g nbors.
-\end{lstlisting}
-
-In this case \texttt{InterfGraph.get} is simply the function to get the neighborhood of a node, \texttt{regs\_mem} is a boolean function to test membership of a node to a set and finally \texttt{is\_cliqueb} is a boolean function to test whether a set is a clique in a specific graph.
-For the purpose of this project, let's ignore the complexity of the various functions as we are only concerned in building a framework that makes it easy to perform formal verification. Anyway, be reassured that all the functions run in polynomial time.
-
-We now define a function that lets us find a simplicial node in the graph:
-
-\begin{lstlisting}[style=Rocq]
-Definition find_next (g : InterfGraph.dict) : option reg :=
-  find (is_simplicialb g) (InterfGraph.keys g).
-\end{lstlisting}
-
-As explained in the second step of the coloring procedure, at each iteration we need to find a simplicial node, and that's exactly what \texttt{find\_next} does. Note that the output node is an optional value, since the function may also receive a non-chordal graph which may not have a simplicial node. This in reality could not be the case since we make the assumption that the interference graphs we receive are chordal. Unfortunately because of that we need to propagate the option wrapper to all the return values of the next functions.
-In the extracted code, upon receiving a \texttt{None} constructor we will to throw an exception, signaling to the user that the interference graph (and likely even the initial \gls{jair} program) is malformed.
-
-Now we proceed with the step function for the \texttt{eliminate} function:
-
-\begin{lstlisting}[style=Rocq]
-Definition eliminate_step
-  (g : InterfGraph.dict) : option (reg * InterfGraph.dict):=
-  match find_next g with
-  | Some next =>
-    Some (next, ig_remove_node g next)
-  | None => None
-  end.
-\end{lstlisting}
-
-It takes an interference graph which is chordal, finds a simplicial node, removes it, and returns both the removed node and the resulting graph.
-Note that, if the precondition of the input graph being chordal is met, the function will never return the \texttt{None} constructor. Furthermore, the resulting graph will also be chordal.
-We will talk more about the postconditions in \Cref{cha:verification}.
-
-Finally, we can move into the \texttt{eliminate} function, that is, the function for obtaining a \gls{peo}:
-
-\begin{lstlisting}[style=Rocq]
-Function eliminate
-  (g : InterfGraph.dict) {measure InterfGraph.size g} : list reg :=
-  match eliminate_step g with
-  | Some (next, g') => next :: (eliminate g')
-  | None => nil
-  end.
-\end{lstlisting}
-
-The definition of the function is straightforward, we take an interference graph, and we remove the simplicial nodes until it becomes the empty graph, constantly appending the removed node at the end of the list.
-As was mentioned in \Cref{subsec:funterm} Rocq has trouble automatically verifying the termination of this function, because of that we add an annotation that tells it that the fixed point lies in the size of the interference graph. We will write a proof for this in \Cref{cha:verification}.
-
-\subsection{Coloring}
-\label{subsec:coloring}
-
-The intuition behind the coloring algorithm is the following, first we make the following assumptions:
-
-\begin{itemize}
-  \item The interference graph $G$ obtained from the previous phase is chordal, which we know from \Cref{thm:chordal-chromatic};
-  \item The chromatic number $\omega(G)$ is less than or equal to the number of available registers $k$, that is, we assume that spilling already happened, making the graph $k$-colorable;
-\end{itemize}
-
-Now take into consideration a single iteration of the algorithm mentioned at the beginning of \Cref{sec:ra}. The node we are about to color is simplicial, meaning that its neighborhood forms a clique. Even if not every element of the neighborhood is colored, the colored neighbors still form a clique (a subset of a clique is still a clique) meaning that the next step consists in finding a color that is not used by the colored neighbors, which is always possible since we assume that $\omega(G) \leq k$.
-
-Given the intuition behind the algorithm, we start with the definition of the \texttt{Coloring} object as a dictionary from virtual registers to physical registers, this object will be the output of the coloring phase.
-
-As we mentioned before, at each position of the \textit{reversed} \gls{peo} we find a node whose colored neighborhood forms a clique, because of that, in order to assign this node a new color we pick a random one from the complement of the neighborhood colors. We define a function specifically for this purpose.
-
-\begin{lstlisting}[style=Rocq]
-Definition preg_compl (colors : set preg) : option preg :=
-  match IRPreg.regs_diff preg_allowed colors with
-  | nil => None
-  | c :: _ => Some c
-  end.
-\end{lstlisting}
-
-Here, given a set of registers we calculate the difference with the set of registers \texttt{preg\_allowed}, and we extract an arbitrary element from it, note that the result of this function is optional since, if we run out of registers, we are not able to extract from the complement and ultimately perform register assignment. This, however, is an unexpected case solved by spilling.
-
-Now we use the function we just defined to color a single node given its interference graph and the current coloring:
-
-\begin{lstlisting}[style=Rocq]
-Definition get_color
-  (v : IRVreg.reg) (g : InterfGraph.dict) (c : Coloring.dict)
-  : option IRPreg.reg :=
-  let nbors := InterfGraph.get g v in
-  let used := map (Coloring.get c) nbors in
-  preg_compl used.
-\end{lstlisting}
-
-Finally, we introduce the function to obtain the complete coloring of the interference graph, the procedure is the same as explained at the beginning of \Cref{subsec:coloring}.
-
-\begin{lstlisting}[style=Rocq]
-Definition get_coloring (peo : list IRVreg.reg) (g : InterfGraph.dict)
-  : option Coloring.dict :=
-  let fix get_coloring_aux (peo : list IRVreg.reg) (c : Coloring.dict)
-    : option Coloring.dict :=
-    match peo with
-    | nil => Some c
-    | v :: peo =>
-      match get_color v g c with
-      | Some p =>
-        let c := Coloring.update c v p in
-        get_coloring_aux peo c
-      | None => None
-      end
-    end
-  in
-  get_coloring_aux (rev peo) Coloring.empty.
-\end{lstlisting}
-
-\section{SSA Destruction}
-\label{sec:destruct}
-
-The final phase before emitting assembly is SSA destruction, which consists in the translation of $\phi$-instructions into moves. This final phase is required since $\phi$-instructions are not implemented in common architectures.
-We mentioned in \Cref{subsec:phi} that a section of $\phi$-instructions behaves as a parallel copy, our goal is to find a sequence of instruction that preserves this property. The translation is straightforward for some cases, take the following example, where $x \to y$ represents moving the content of register $x$ to register $y$:
-\[
-  r_1 \to r_2, r_2 \to r_3, r_3 \to r_4
-\]
-Solving this problem basically consists in reordering the moves so that no value is overwritten, the solution for this case is:
-\[
-  r_3 \to r_4, r_2 \to r_3, r_1 \to r_2
-\]
-Unfortunately some other cases are non-trivial, namely those who contain loops such as:
-\[
-  r_1 \to r_2, r_2 \to r_3, r_3 \to r_1
-\]
-There are two ways of solving these cases, we could try to find a sequence of swap operations such that at the end of the computation each value ends up in the intended register, this first option could be implemented using a swap instruction (like \texttt{xchg}) if supported by the architecture, or by using the XOR operator. Another option would be to reserve a special register \texttt{tmp} to perform the swaps. In our implementation we use an already verified algorithm~\cite{Rideau-Serpette-Leroy-parmov} that uses temporary variables. Given the previous example we would end up with the following result:
-\[
-  r_1 \to \texttt{tmp}, r_3 \to r_1, r_2 \to r_3, \texttt{tmp} \to r_2
-\]
-Now that we are able to compile a parallel move we visit the \gls{cfg} while translating one section of $\phi$-instructions at a time.
-We identify three different cases when performing the destruction, one for each jump instruction:
-\begin{itemize}
-  \item When visiting a basic block that ends with a \texttt{CondJump} we need to translate two different parallel moves, one for each of the two successors, since we cannot append two different parallel move translations into the current block, as they would conflict with each other, we need to create two new basic blocks, each of which contains the corresponding translation of the parallel move and then an unconditional jump to the successor. We also give them the same label as the current block but, this time, we use constructors \texttt{Point1} and \texttt{Point2} to avoid a collision with the current block, which uses the \texttt{Normal} constructor;
-  \item If instead we encounter a jump instruction, the translation simply consists in appending the translated parallel move at the end of the instructions of the current block;
-  \item Finally the return instruction does not require any translation, as it is the last instruction of a program;
-\end{itemize}
-
-In \Cref{fig:destruct} we can see an example of SSA destruction in action, in the visit first we encounter an unconditional jump, then a conditional jump and finally a return instruction.
-
-
-\begin{figure}[h]
-\centering
-\begin{minipage}{0.45\textwidth}
-\centering
-  \begin{tikzpicture}[
-      node distance=10mm,
-      every node/.style={draw, align=left, inner sep=4pt},
-      >={Stealth}
-    ]
-    \node (entry)   at (0, 0)   {$r_0 \leftarrow 0$};
-    \node (loop)    at (0, -2)  {$r_1 \leftarrow \phi(r_0, r_2)$ \\ $r_2 \leftarrow r_1 + 1$};
-    \node (end)     at (0, -4)  {ret $r_2$};
-    \draw[->] (entry) -- (loop);
-    \draw[->] ([xshift=10pt]loop.south) to[out=315, in=45, looseness=8] ([xshift=10pt]loop.north);
-    \draw[->] (loop) -- (end);
-    \end{tikzpicture}
-\end{minipage}
-\hfill
-\begin{minipage}{0.45\textwidth}
-\centering
-  \begin{tikzpicture}[
-      node distance=10mm,
-      every node/.style={draw, align=left, inner sep=4pt},
-      >={Stealth}
-    ]
-    \node (entry)   at (0, 0)     {$r_0 \leftarrow 0$ \\ $r_1 \leftarrow r_0$};
-    \node (loop)    at (0, -2)    {$r_2 \leftarrow r_1 + 1$};
-    \node (loop1)   at (-1.5, -4) {nop};
-    \node (loop2)   at (1.5, -4)  {$r_1 \leftarrow r_2$};
-    \node (end)     at (0, -6)    {ret $r_6$};
-    \draw[->] (entry) -- (loop);
-    \draw[->] (loop) -- (loop1);
-    \draw[->] (loop) -- (loop2);
-    \draw[->] (loop2.south) to[out=315, in=45, looseness=3] ([xshift=10pt]loop.north);
-    \draw[->] (loop1) -- (end);
-    \end{tikzpicture}
-\end{minipage}
-\caption{SSA destruction of a loop}
-\label{fig:destruct}
-\end{figure}
-
-\todo{Add description of registers implementation either in \Cref{sec:jair} or \Cref{cha:verification}}
-
-\section{Extraction}
-\label{sec:extract}
-
-After defining all the steps of our register assignment pipeline, we extract them into OCaml.
-In particular, we extract the following functions:
-\begin{itemize}
-  \item \texttt{Vm.run} to interpret our programs;
-  \item \texttt{LivenessInfo.analyze\_program} to perform liveness analysis;
-  \item \texttt{InterfGraph.get\_ig} to obtain the interference graph;
-  \item \texttt{Peo.eliminate} to obtain the \gls{peo};
-  \item \texttt{Color.get\_coloring} to construct our coloring map;
-  \item \texttt{Color.color\_program} to translate the program into one using physical registers;
-  \item \texttt{Destruct.ssa\_destruct} to remove the $\phi$-instructions;
-\end{itemize}
-
-After extracting we compose the various steps of our pipeline into the \texttt{regassign} function:
-
-\begin{lstlisting}[style=OCaml]
-let regassign irvreg_program =
-  let (programinfo, _) = analyze_program irvreg_program fuel_analyze in
-  let interfgraph = get_ig programinfo in
-  let peo = eliminate interfgraph in
-  let coloring =
-    match get_coloring peo interfgraph with
-    | Some c -> c
-    | None -> failwith "Not enough registers to complete assignment"
-  in
-  let irpreg_program = color_program coloring irvreg_program in
-  ssa_destruct fuel_destruct irpreg_program
-;;
-\end{lstlisting}
-
-This function accepts a program written in \gls{jair} and returns an equivalent program without $\phi$-instructions and using only x86-64 registers.
-Note that, at line 8, we panic if we are not able to perform the coloring due to a high number of variables, this is required since we do not perform spilling.
-
-Finally, with this representation, the generation of assembly code is straightforward, we simply perform a DFS on the \gls{cfg} and generate the assembly code for each basic block we visit.
-In particular, for our implementation, we chose to emit assembly with the Netwide Assembler (NASM) syntax.
-
-The following OCaml function does exactly so, writing the assembly code of a program into the specified output channel:
-
-\begin{lstlisting}[style=OCaml]
-let gen_irpreg_program out program =
-  let visited = ref LblSet.empty in
-  let rec gen_irpreg_program_aux out program =
-    let IRPreg.Block (l, ps, is, j) = Lazy.force_val program in
-
-    if not (LblSet.mem l !visited) then (
-      visited := LblSet.add l !visited;
-
-      if not (List.is_empty ps) then
-        failwith
-          "Malformed program, should not contain phi instructions";
-
-      (* Generate label *)
-      gen_label out l;
-
-      (* Generate instructions *)
-      gen_insts out is;
-
-      (* Generate jump instruction *)
-      match Lazy.force_val j with
-      | IRPreg.CondJump (c, r, v, b1, b2) ->
-        gen_condjump out c r v b1 b2;
-        gen_irpreg_program_aux out b1;
-        gen_irpreg_program_aux out b2;
-
-      | IRPreg.Jump b ->
-        gen_jump out b;
-        gen_irpreg_program_aux out b;
-
-      | IRPreg.Ret r ->
-        gen_ret out r
-    )
-  in
-  gen_section out ".text";
-  gen_start out program;
-  gen_irpreg_program_aux out program
-;;
-\end{lstlisting}
-
-At line 14 we generate the label using the \texttt{gen\_label} function, then, at line 17 we generate the body of instructions of the basic block, and finally, at line 20, we generate the jump instruction. We continue with the recursion until we either reach a \texttt{Ret} instruction or we encounter an already visited block.
-
-A subtle detail, when translating from \gls{jair} to x86-64 assembly, is that our language is a three-address code representation, while x86-64 assembly only allows instructions to have a maximum of two arguments.
-To handle cases where the operands of an instruction are greater than two we introduce the following function:
-
-\begin{lstlisting}[style=OCaml]
-let gen_3ac_2ac out opcode r r' v =
-  if r = r' then
-    gen_bininst out opcode  (string_of_reg r) (string_of_val v)
-  else
-    match v with
-
-    (* r(0) <- r(1) / i(100) *)
-    | IRPreg.Imm x ->
-      gen_bininst out MOV     (string_of_reg r) (string_of_reg r');
-      gen_bininst out opcode  (string_of_reg r) (string_of_int x)
-
-    (* r(0) <- r(1) / r(2) *)
-    | IRPreg.Reg r'' ->
-      gen_bininst out MOV     (string_of_reg tmp) (string_of_reg r');
-      gen_bininst out opcode  (string_of_reg tmp) (string_of_reg r'');
-      gen_bininst out MOV     (string_of_reg r)   (string_of_reg tmp);
-
-    (* r(0) <- r(1) / p(100) *)
-    | IRPreg.Ptr p ->
-      gen_bininst out MOV     (string_of_reg r) (string_of_reg r');
-      gen_bininst out opcode  (string_of_reg r) (string_of_int p)
-;;
-\end{lstlisting}
-
-We handle three different cases, depending on the last operand:
-\begin{itemize}
-  \item If the third operand is an immediate value, we move the second register into the destination, and finally we perform the operation with the immediate value;
-  \item If the third operand is another register, we move the second register into the temporary register, we perform the operation with the third register, and finally we move the temporary register into the destination register;
-  \item If the third operand is a pointer, the behavior is the same as in the first point;
-\end{itemize}
-Now, because the temporary register, defined by \texttt{tmp}, is used only in the blocks introduced by the SSA destruction phase, it is safe to use it inside \texttt{Normal} blocks, since, during the coloring, we exclude \texttt{tmp} from the list of colors.
-
-To show an example of a program translation, we take the program defined in \Cref{fig:example-jair} and compile it. The result is shown in \Cref{fig:example-nasm}.
-
-\begin{figure}[ht]
-\begin{lstlisting}[style=NASM]
-section .text
-global _start
-_start:
-	jmp	L1
-L1:
-	mov	rdx,	0
-	mov	rcx,	1
-	mov	rbx,	12
-	mov	rax,	rdx
-	mov	rdx,	rcx
-	mov	rcx,	rax
-	jmp	L2
-L2:
-	mov	rax,	rdx
-	add	rax,	rcx
-	mov	rcx,	rax
-	sub	rbx,	1
-	cmp	rbx,	1
-	je	L2.1
-	jmp	L2.2
-L2.1:
-	jmp	L3
-L3:
-	mov	rax,	60
-	mov	rdi,	rcx
-	syscall
-L2.2:
-	mov	rax,	rdx
-	mov	rdx,	rcx
-	mov	rcx,	rax
-	jmp	L2
-\end{lstlisting}
-\caption{Assembly translation of the Fibonacci function}
-\label{fig:example-nasm}
-\end{figure}
