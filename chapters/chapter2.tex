@@ -168,14 +168,13 @@ int foo() {
 \end{figure}
 
 In other instances of \gls{ssa} programs, we may find multiple $\phi$-instructions grouped together at the beginning of a basic block. Semantically, those instructions are executed in parallel.
-Take for example the \gls{ssa} block in \Cref{fig:par1} where we merge the control flow from two predecessors. If we come from the first one we assign $a_1$ to $a_3$ and $a_2$ to $a_4$, whereas, if we come from the second one, we assign $a_2$ to $a_3$ and $a_1$ to $a_4$. Now, in \Cref{fig:par2}, we show a valid \gls{ra}, where $r_1$ is assigned to $a_1$ and $a_3$, while $r_2$ is assigned to $a_2$ and $a_4$.
-Finally, in \Cref{fig:par3}, we try to convert the $\phi$-instructions into a sequence of moves, depending on the predecessor. If we come from $B_1$, we don't need to do anything.
-Instead, if we come from $B_2$, we need to perform a swap of $r_1$ and $r_2$. A literal translation, as shown in the example, doesn't help, as in that case we are overwriting the content of $r_1$. If instead, we take the two instructions in $B_2$, and we execute them parallelly, we will match the intended behavior defined initially.
+Take for example the \gls{ssa} block in \Cref{fig:par1} where we merge the control flow from two predecessors. If we come from the first one we assign $a_1$ to $a_3$ and $a_2$ to $a_4$, whereas, if we come from the second one, we assign $a_2$ to $a_3$ and $a_1$ to $a_4$. Now, in \Cref{fig:par2}, we show a valid \gls{ra}. If we come from the first predecessor, we don't need to do anything, as $r_1$ and $r_2$ are already in their target registers.
+However, if we come from the second predecessor, we need to perform a swap of $r_1$ and $r_2$. A sequential execution of the $\phi$-instructions, doesn't help, as in that case we would overwrite the content of $r_1$. If instead, we take the two $\phi$-instructions, and we execute them parallelly, we will match the intended behavior defined in \Cref{fig:par1}.
 
 % Possible improvement: maybe remove the third figure, and only talk about the semantics of the second figure (not the SSA destruction)
 \begin{figure}[ht]
 \centering
-\begin{minipage}{0.30\textwidth}
+\begin{minipage}{0.48\textwidth}
   \centering
   \caption{\gls{ssa} basic block with multiple $\phi$-instructions}
   \label{fig:par1}
@@ -189,7 +188,7 @@ Instead, if we come from $B_2$, we need to perform a swap of $r_1$ and $r_2$. A 
   \end{tikzpicture}
 \end{minipage}
 \hfill
-\begin{minipage}{0.30\textwidth}
+\begin{minipage}{0.48\textwidth}
   \centering
   \caption{Same basic block after \gls{ra} with three physical registers}
   \label{fig:par2}
@@ -202,40 +201,21 @@ Instead, if we come from $B_2$, we need to perform a swap of $r_1$ and $r_2$. A 
   \draw[->] (b2) -- (end);
   \end{tikzpicture}
 \end{minipage}
-\hfill
-\begin{minipage}{0.30\textwidth}
-  \centering
-  \caption{Same basic block after (incorrect) $\phi$-instruction translation}
-  \label{fig:par3}
-  \begin{tikzpicture}
-
-  \node (b1) at (-1.5, 0) [draw, label=above:$B_1$, align=left, inner sep=4pt]
-    {$\dots$ \\ $r_1 \leftarrow r_1$ \\ $r_2 \leftarrow r_2$};
-  \node (b2) at (1.5, 0)  [draw, label=above:$B_2$, align=left, inner sep=4pt]
-    {$\dots$ \\ $r_1 \leftarrow r_2$ \\ $r_2 \leftarrow r_1$};
-  \node (end) at (0, -2)  [draw, align=left, inner sep=4pt]
-    {$r_3 \leftarrow r_1 + r_2$ \\ ret $r_3$};
-
-  \draw[->] (b1) -- (end);
-  \draw[->] (b2) -- (end);
-  \end{tikzpicture}
-\end{minipage}
 \end{figure}
 
 \section{\glsentrylong{ra}}
 \label{sec:ra}
 
-\gls{ra} assigns a potentially unbounded number of virtual registers to a limited number of physical registers. A well-known approach reduces this problem to graph coloring of the interference graph~\cite{HGG:2006:RA_SSA}.
+\gls{ra} assigns a potentially unbounded number of virtual registers to a limited number of physical registers. A well-known approach reduces this problem to graph coloring of the interference graph~\cite{HGG:2006:RA_SSA}. Before talking about this approach, let us introduce some definitions.
 
 \begin{definition}[Liveness]\label{def:liveness}
-  Given a \gls{cfg}, a variable $u$ is live at instruction $i$, if $u$ is already defined, and its value may be needed in the future.
+  Given a \gls{cfg}, a variable $u$ is live at instruction $i$, if $u$ is already defined, and its value may be used by a future instruction.
 \end{definition}
 
 \begin{definition}[Interference]
   Given a \gls{cfg}, two variables $u$ and $v$ interfere, iff there exists at least one instruction where they are both live.
 \end{definition}
 
-% split the sentence, mention that g is an interf graph, maybe using a bullet list
 \begin{definition}[Interference Graph]\label{def:ig}
   Given a \gls{cfg}, its interference graph is $G = (V, E)$ where
   \begin{itemize}
@@ -244,10 +224,10 @@ Instead, if we come from $B_2$, we need to perform a swap of $r_1$ and $r_2$. A 
   \end{itemize}
 \end{definition}
 
-By looking at \Cref{def:liveness}, we see that if two variables interfere, they cannot be assigned to the same register. If they are, one of the two values is lost.
-Now take any interference graph as defined in \Cref{def:ig}, and assume that there is an edge between two variables, say $u$ and $v$. Because this means that $u$ and $v$ interfere, they must be assigned different registers.
+By looking at \Cref{def:liveness}, we see that if two variables interfere, they cannot be assigned to the same register. This is because, if they were, one of the two values would be lost.
+Now take any interference graph as defined in \Cref{def:ig}, and assume that there is an edge between two variables, say $u$ and $v$. Since $u$ and $v$ interfere, they must be assigned different registers.
 It is now immediate to see that the problem of \gls{ra} consists in finding a coloring of the interference graph. In this instance of the problem, the nodes are the variables, while the colors are the physical registers.
-Take the program show in \Cref{fig:ig1}, here we see the following interferences:
+Take the program show in \Cref{fig:ig1}, we derive the following interferences:
 \begin{itemize}
   \item At line 3, both \texttt a and \texttt b are live, since they are used later at line 4;
   \item At line 4, both \texttt c and \texttt b are live, since they are used later at line 5;
@@ -255,7 +235,7 @@ Take the program show in \Cref{fig:ig1}, here we see the following interferences
   \item Finally, at line 5, both \texttt d and \texttt a are live, since they will be used later at line 6;
 \end{itemize}
 
-We use these interferences to build the interference graph in \Cref{fig:ig2}, and we present a valid 3-coloring for that graph. After finding the coloring we assign them to each variable in \Cref{fig:ig3}.
+We use these interferences to build the interference graph in \Cref{fig:ig2}, and we present a valid 3-coloring for that graph. After finding the coloring we translate each variable into its assigned register in \Cref{fig:ig3}.
 
 \begin{figure}[ht]
 \centering
@@ -275,16 +255,14 @@ int foo() {
 \hfill
 \begin{minipage}{0.48\textwidth}
   \centering
-  \caption{Interference graph of the program shown in \Cref{fig:ig1}}
+  \caption{3-coloring of the interference graph of \Cref{fig:ig1}}
   \begin{tikzpicture}[scale=1, every node/.style={circle, draw, minimum size=8mm}]
-    % Nodes
     \node[fill=orange!50]    (a) at (1,1.5)  {a};
     \node[fill=purple!50] (b) at (0,0)      {b};
     \node[fill=cyan!50] (c) at (2,0)     {c};
     \node[fill=purple!50] (d) at (3,1.5)    {d};
     \node[fill=orange!50] (e) at (4,0)       {e};
 
-    % Edges
     \draw (a) -- (b);
     \draw (b) -- (c);
     \draw (a) -- (c);
@@ -308,13 +286,6 @@ int foo() {
 }
 \end{lstlisting}
 \end{figure}
-
-
-
-% Give this immediate
-It is immediate to see that a $k$-coloring of the interference graph, where each color represents a physical register, corresponds to a feasible register assignment for a machine with $k$ registers.
-
-
 
 \subsection{Register Assignment in SSA Form}
 \label{subsec:ssara}
@@ -349,6 +320,7 @@ The reason why chordal graphs are particularly appealing are the two following t
 
 From these, follows that, while register assignment is NP-complete for arbitrary representations, this problem becomes solvable optimally and in polynomial time for programs in \gls{ssa} form.
 
+% TODO: more buildup
 Here we introduce some other definitions that we will use later, during the description of the algorithm.
 
 \begin{definition}[Chromatic Number]\label{def:chromatic}
