@@ -1,6 +1,7 @@
 % General
 
 \usepackage[utf8]{inputenc}
+\usepackage{syntax}
 \usepackage{geometry}
 \usepackage{csquotes}
 \usepackage{graphicx}
@@ -11,7 +12,7 @@
 \usepackage{appendix}
 \usepackage{lipsum}     %testo di prova (si può cancellare una volta iniziato a scrivere)
 \usepackage{lineno}
-\linenumbers
+% \linenumbers
 
 %\usepackage[9-15]{pagesel}
 % attenzione: la filigrana in prima pagina ha opacità massima con questa opzione attivata
@@ -60,7 +61,7 @@
 }
 
 \lstdefinelanguage{Rocq}{
-    morekeywords=[1]{Definition, Inductive, CoInductive, Class, Instance, Fixpoint, CoFixpoint, Function, Proof, Qed},
+    morekeywords=[1]{Definition, Inductive, CoInductive, Class, Instance, Fixpoint, CoFixpoint, Function, Proof, Qed, Module},
     morekeywords=[2]{forall, exists, match, with, end, if, then, else, let, in, fix, fun, intros, unfold, destruct, lia},
     morekeywords=[3]{Prop, Type, Set, True, False, nat, bool, option, list},
     sensitive=true,
@@ -181,6 +182,7 @@
 \newacronym{ssa}{SSA}{Static Single Assignment}
 \newacronym{peo}{PEO}{Perfect Elimination Order}
 \newacronym{cfg}{CFG}{Control Flow Graph}
+\newacronym{bnf}{BNF}{Backus-Naur Form}
 
 \usepackage{graphicx} % Required for inserting images
 \usepackage[T1]{fontenc}

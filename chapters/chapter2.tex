@@ -104,7 +104,7 @@ Here, at line 2, we introduce the quantified variables and the two assumptions i
 
 Before talking about \gls{ssa} form, we need to introduce some other definitions.
 
-\begin{definition}[\glsentrylong{cfg}]
+\begin{definition}[\glsentrylong{cfg}]\label{def:cfg}
   A \gls{cfg} is defined as the triple $(B, \text{CF}, \textbf{start})$, where:
   \begin{itemize}
     \item $B$ is the set of basic blocks, each consisting of a sequence of instructions;
@@ -225,7 +225,7 @@ However, if we come from the second predecessor, we need to perform a swap of $r
 \end{definition}
 
 By looking at \Cref{def:liveness}, we see that if two variables interfere, they cannot be assigned to the same register. This is because, if they were, one of the two values would be lost.
-Now take any interference graph as defined in \Cref{def:ig}, and assume that there is an edge between two variables, say $u$ and $v$. Since $u$ and $v$ interfere, they must be assigned different registers.
+Now take an interference graph, as defined in \Cref{def:ig}, such that there is an edge between two variables, say $u$ and $v$. Since $u$ and $v$ interfere, they must be assigned different registers.
 It is now immediate to see that the problem of \gls{ra} consists in finding a coloring of the interference graph. In this instance of the problem, the nodes are the variables, while the colors are the physical registers.
 Take the program show in \Cref{fig:ig1}, we derive the following interferences:
 \begin{itemize}
@@ -235,7 +235,7 @@ Take the program show in \Cref{fig:ig1}, we derive the following interferences:
   \item Finally, at line 5, both \texttt d and \texttt a are live, since they will be used later at line 6;
 \end{itemize}
 
-We use these interferences to build the interference graph in \Cref{fig:ig2}, and we present a valid 3-coloring for that graph. After finding the coloring we translate each variable into its assigned register in \Cref{fig:ig3}.
+We use these interferences to build the interference graph in \Cref{fig:ig2}, and we present a valid three-coloring for that graph. After finding the coloring we translate each variable into its assigned register in \Cref{fig:ig3}.
 
 \begin{figure}[ht]
 \centering
@@ -255,7 +255,7 @@ int foo() {
 \hfill
 \begin{minipage}{0.48\textwidth}
   \centering
-  \caption{3-coloring of the interference graph of \Cref{fig:ig1}}
+  \caption{Three-coloring of the interference graph of \Cref{fig:ig1}}
   \begin{tikzpicture}[scale=1, every node/.style={circle, draw, minimum size=8mm}]
     \node[fill=orange!50]    (a) at (1,1.5)  {a};
     \node[fill=purple!50] (b) at (0,0)      {b};
@@ -275,7 +275,7 @@ int foo() {
 \begin{figure}
 \label{fig:ig3}
 \lstset{style=C}
-\begin{lstlisting}[caption={Program shown in \Cref{fig:ig1} after \gls{ra}}, label={fig:ig1}]
+\begin{lstlisting}[caption={Program shown in \Cref{fig:ig1} after \gls{ra}}, label={fig:ig3}]
 int foo() {
     int $\color{orange}{r_1}$ = get_a();
     int $\color{purple}{r_2}$ = get_b();
@@ -301,7 +301,7 @@ Before talking about register assignment in SSA form we need to define some prop
 \end{definition}
 
 \begin{definition}[\gls{peo}]
-  Given a graph $G = (V, E)$, a permutation of the nodes, $u_1, u_2, \dots, u_n$, such that $u_1$ is simplicial in $G$, $u_2$ is simplicial in $G - u_1$, \dots, $u_n$ is simplicial in $(\{ u_n \}, \emptyset)$.
+  Given a graph $G = (V, E)$, a \gls{peo} is permutation of the nodes, $u_1, u_2, \dots, u_n$, such that $u_1$ is simplicial in $G$, $u_2$ is simplicial in $G - u_1$, \dots, and $u_n$ is simplicial in $(\{ u_n \}, \emptyset)$.
 \end{definition}
 
 \begin{definition}[Chordal Graph]\label{def:chordal}
@@ -315,7 +315,7 @@ The reason why chordal graphs are particularly appealing are the two following t
 \end{theorem}
 
 \begin{theorem}[Chordality of \gls{ssa} Programs]
-  The interference graph of a program in \gls{ssa} form is chordal~\cite{HGG:2006:RA_SSA}.
+  The interference graph of a program in \gls{ssa} form is chordal~\cite{HGG:2006:RA-SSA}.
 \end{theorem}
 
 From these, follows that, while register assignment is NP-complete for arbitrary representations, this problem becomes solvable optimally and in polynomial time for programs in \gls{ssa} form.

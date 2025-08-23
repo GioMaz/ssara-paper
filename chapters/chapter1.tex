@@ -3,7 +3,7 @@
 \chapter{Introduction}
 \label{cha:intro}
 
-While high-level programming languages such as C and OCaml allow developers to define an arbitrary number of variables, actual hardware imposes strict limits. For example, the x86 architecture provides only 8 general-purpose registers \cite{intel_sdm_vol1}.
+While high-level programming languages such as C and OCaml allow developers to define an arbitrary number of variables, actual hardware imposes strict limits. For example, the x86 architecture provides only 8 general-purpose registers \cite{intel-sdm-vol1}.
 In order to handle this limitation, a register allocation pass is required. Register allocation consists of different steps, namely spilling, \gls{ra}, and coalescing. For this project we focus on \gls{ra}, which is a crucial part of the pipeline.
 
 To clearly state the purpose of \gls{ra}, take into consideration the following example: Suppose we have the C function shown in \Cref{fig:cbefore}, and we want to compile it for an architecture with three registers. The non-trivial goal of \gls{ra} is to identify which physical register needs to be used to store a new variable whenever the total number of variables is greater than the number of physical registers. The resulting program after \gls{ra} is shown in \Cref{fig:cafter}. In particular, we see that at line 5, the register $r_2$ is reused, as its content is no longer needed.

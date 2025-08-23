@@ -3,31 +3,36 @@
 \chapter{\gls{jair}}
 \label{cha:jair}
 
-In this chapter, we provide an overview of the design and implementation choices that guided the development of the register assignment pipeline and the underlying language \gls{jair}. The implementation is structured in a modular way, beginning with the definition of the syntax and semantics of the language. We then detail the steps of register assignment, namely liveness analysis, graph coloring, and \gls{ssa} destruction.
+Here, we detail the implementation of \gls{jair}. In particular, in \Cref{sec:jair-syntax}, we define the syntax of the language in \gls{bnf}, and we show its implementation in Rocq. In \Cref{sec:jair-vm}, we define its semantics as a virtual machine.
 
 \section{The \gls{jair} Syntax}
-\label{sec:jair}
+\label{sec:jair-syntax}
 
-The primary goal in defining the syntax of \gls{jair} is to leverage the type system of Rocq to rule out as many ill-formed \gls{ssa} programs as possible, as discussed in \Cref{sec:ssa}. We begin by describing how registers are represented in our language.
+\gls{jair} leverages the type system of Rocq to rule out as many ill-formed \gls{ssa} programs as possible. We begin by describing how registers and labels are represented in our language. We then proceed in defining the different types of instructions, namely ALU-instructions, $\phi$-instructions, and jump instructions. Then, we define the basic block type.
+At the end of the section we discuss the limitations of \gls{jair} by showing some examples.
 
 \subsection{Registers}
 
-Our implementation uses two kinds of registers: virtual registers in the earlier phases of register assignment, and physical registers in the final phase. To support both use cases, we define \texttt{IR} module, which defines the syntax of our intermediate representation generically over these two types of registers.
+Our implementation uses two kinds of registers: virtual registers in the earlier phases of \gls{ra}, and physical registers in the final phase. To support both virtual and physical registers, we make \gls{jair} parametric over the type of registers. To this end, we define the \texttt{IR} module. The \texttt{IR} module has the following signature.
 
-The module requires the following parameters:
+\begin{lstlisting}[style=Rocq]
+Module MakeIR (IR: IR_PARAMS).
+  (* ... *)
+\end{lstlisting}
+
+Where \texttt{IR\_PARAMS} are the following parameters:
 \begin{itemize}
     \item The register type \texttt{reg}, the set of all the registers we can choose from;
-    \item The boolean equality function for the register type, namely \texttt{reg\_eqb};
     \item A proof for the decidability of the logical equality for the register type, namely \texttt{reg\_eq\_dec};
 \end{itemize}
 
-For virtual registers, we use the set of natural numbers, which, although bounded by Rocq's runtime limits, can be treated as unbounded for our purposes.
+Virtual registers use the set of natural numbers.
 
 \begin{lstlisting}[style=Rocq]
 Definition vreg := nat.
 \end{lstlisting}
 
-For physical registers, instead, we define a finite set that corresponds to the 64-bit general-purpose registers of the x86-64 architecture.
+Physical registers, correspond to the 64-bit general-purpose registers of the x86-64 architecture.
 
 \begin{lstlisting}[style=Rocq]
 Inductive preg : Type :=
@@ -35,20 +40,20 @@ Inductive preg : Type :=
   | RBX
   | RCX
   (* ... *)
-  | UNASSIGNED
-.
+  | UNASSIGNED.
 \end{lstlisting}
 
 We also include the \texttt{UNASSIGNED} register, this register is used as a default value for the coloring, removing the need of returning an optional value everywhere. Later we will prove that the coloring function will never return this constructor.
 
-Throughout the implementation, every register is understood to be either virtual or physical depending on the phase of the compilation pipeline.
-
 \subsection{Labels}
 
-Initially, we opted for a label-less representation of basic blocks.
-Later in the project we saw the necessity of introducing them for this specific reason: the $\phi$-instructions require labels to identify the incoming control flow since predecessors of a basic blocks are not ordered. Without labels a $\phi$-instruction would not know which one of the predecessors each of its arguments is bound to.
+We now define the non-terminal of a block label:
 
-An alternative solution would be (given the single definition policy of \gls{ssa}) to go back in the control flow to find which of the arguments of the $\phi$-instruction is defined. This approach proved too complicated, so we adopted labels, at the cost of introducing possible inconsistencies in the representation that we will later discuss in \Cref{subsec:limitations}.
+\begin{grammar}
+<label> ::= `Normal' <natural> | `Point1' <natural> | `Point2' <natural>
+\end{grammar}
+
+Implemented in Rocq with the following definition:
 
 \begin{lstlisting}[style=Rocq]
 Inductive lbl : Type :=
@@ -57,12 +62,16 @@ Inductive lbl : Type :=
   | Point2 : nat -> lbl.
 \end{lstlisting}
 
-The label type is defined with three constructors. The reason is explained more in detail in \Cref{sec:destruct}, but for now let's just say that the \gls{ssa} destruction phase introduces additional basic blocks (at most two for each preexisting basic block). With the constructors \texttt{Point1} and \texttt{Point2} we identify these additional basic blocks in order to avoid collisions, whereas with the \texttt{Normal} constructor we identify the blocks that already existed before the destruction phase.
+The label type has three constructors, \Cref{sec:destruct} discusses this more in depth. With the constructors \texttt{Point1} and \texttt{Point2} we identify additional basic blocks introduced in later stages of the pipeline, whereas with the \texttt{Normal} constructor we identify the blocks that already existed before \gls{ra}.
 
-\subsection{ALU Instructions}
+\subsection{ALU-Instructions}
 
-In order to perform computations, our intermediate representation must provide arithmetical and logical instructions.
-We start by defining the \texttt{val} type which represents an operand of these instructions. It can be either an immediate integer, a register, or a pointer to a memory location (represented by a natural number):
+In order to perform computations, \gls{jair} provides arithmetic and logical instructions.
+We define the \texttt{val} type which represents an operand of these instructions. It can be either an immediate integer, a register, or a pointer to a memory location (represented by a natural number). The following is the \gls{bnf} definition of the value type, along with its type definition.
+
+\begin{grammar}
+<value> ::= `i(' <integer> `)' | `r(' <register> `)' | `p(' <pointer> `)'
+\end{grammar}
 
 \begin{lstlisting}[style=Rocq]
 Inductive val : Type :=
@@ -71,21 +80,41 @@ Inductive val : Type :=
   | Ptr (p : nat).
 \end{lstlisting}
 
-We then define the type of expressions \texttt{expr}. These include register copies, memory loads, and arithmetical and logical operations. Expression depth is restricted to avoid unnecessary complexity and to preserve the linearity of the data structure.
+We define the syntax of expressions.
 
+\begin{minipage}{0.45\textwidth}
+\begin{grammar}
+<expression> ::= <value>
+\alt `load' <value>
+\alt `r(' <register> `)' `+' <value>
+\alt `r(' <register> `)' `-' <value>
+\alt `r(' <register> `)' `*' <value>
+\alt `r(' <register> `)' `/' <value>
+\end{grammar}
+\end{minipage}
+\hfill
+\begin{minipage}{0.45\textwidth}
 \begin{lstlisting}[style=Rocq]
 Inductive expr : Type :=
   | Val : val -> expr
   | Load : val -> expr
   | Add : reg -> val -> expr
   | Sub : reg -> val -> expr
-  (* ... *)
-.
+  | Mul : reg -> val -> expr
+  | Div : reg -> val -> expr.
 \end{lstlisting}
+\end{minipage}
 
-As can be seen from the previous snippet, binary expressions always use a register as the first operand, preventing expressions that involve only constants since, in that case, the result could be computed during a previous step of constant folding. Another thing to note is that, for the sake of register assignment, a differentiation between unary, binary and $n$-ary expressions is unnecessary, as we are only concerned with the identities of the operands of an expression (the registers) and not the operators.
+These include registers, memory loads, and arithmetic and logical operations. The expression non-terminal is not defined recursively to preserve the linearity of the data structure.
 
-Finally, the instruction type \texttt{inst} reflects the core operations in our language. Instructions either define a register by assigning to it the result of an expression, or store a value into memory:
+As can be seen from the previous definitions, binary expressions always use a register as the first operand. This prevents expressions where all the operands are constants. In that case, in fact, the result could be computed during a previous step of constant folding. It should be also mentioned that, for the sake of \gls{ra}, a differentiation between unary, binary and $n$-ary expressions is unnecessary. This is because we are only concerned with the identities of the operands of an expression (the registers) and not the operators.
+
+The instruction type \texttt{inst} reflects the core operations in our language. An instruction can either define a register by assigning to it the result of an expression, or it can store a value into memory.
+
+\begin{grammar}
+<instruction> ::= `r(' <register> `)' `<-' <expression>
+\alt `store' `r(' <register> `)' `r(' <register> `)'
+\end{grammar}
 
 \begin{lstlisting}[style=Rocq]
 Inductive inst : Type :=
@@ -93,32 +122,98 @@ Inductive inst : Type :=
   | Store (v : val) (r : reg).
 \end{lstlisting}
 
-The \texttt{Store} instruction is treated specially because it does not produce a result that can be assigned to a register. Therefore, it cannot be expressed as a \texttt{Def}.
+\texttt{Store} is treated specially, because it does not produce a result that can be assigned to a register. Therefore, it cannot be expressed as a \texttt{Def}.
+Instructions are often grouped into sequences that are executed linearly. To represent it, we introduce the following non-terminals in our grammar.
+
+\begin{grammar}
+<instructions> ::= <instruction> `;' <instructions> | <instruction>
+
+<instructions-or-empty> ::= `[' <instructions> `]' | `[]'
+\end{grammar}
 
 \subsection{$\phi$-Instructions}
 
-In \Cref{sec:ssa} we defined a section of $\phi$-instructions as a parallel move based on the predecessor in the control flow.
-We need an implementation that preserves this definition, to do so we start by defining the type of an argument of a $\phi$-instruction, namely \texttt{phi\_arg}.
+\Cref{sec:ssa} defines a sequence of $\phi$-instructions as a parallel move based on the predecessor in the control flow.
+We try to encode the data required by a $\phi$-instruction with the following definitions. We define the syntax of the arguments of a $\phi$-instruction.
+
+\begin{grammar}
+<phi-arguments> ::= `(' <register> `,' <label> `)' `;' <phi-arguments> | (<register>, <label>)
+
+<phi-arguments-or-empty> ::= `[' <phi-arguments> `]' | `[]'
+\end{grammar}
+
+And its correspondent type, for a single argument:
 
 \begin{lstlisting}[style=Rocq]
 Definition phi_arg : Type := (reg * lbl).
 \end{lstlisting}
 
-Semantically the \texttt{reg} instance is the source of the copy if the control flow comes from the \texttt{lbl} instance.
+Semantically, the \texttt{reg} instance is the source of the copy iff the control flow comes from the \texttt{lbl} instance.
 
-Finally, we define $\phi$-instruction type, this is simply an assignment of one of the possible \texttt{phi\_arg}s to a destination \texttt{reg}.
+We define the syntax of the $\phi$-instruction, as an assignment of one of the possible \synt{phi-arguments} to the destination \synt{register}.
+
+\begin{grammar}
+<phi> ::= `r(' <register> `)' `<-' `phi' <phi-arguments-or-empty>
+\end{grammar}
 
 \begin{lstlisting}[style=Rocq]
 Inductive phi : Type :=
 | Phi : reg -> list phi_arg -> phi.
 \end{lstlisting}
 
+Much like ALU-instructions, $\phi$-instructions are often grouped into sequences. Because of that we introduce the following non-terminals.
+
+\begin{grammar}
+<phis> ::= <phi> `;' <phis>
+
+<phis-or-empty> ::= `[' <phis> `]' | `[]'
+\end{grammar}
+
 % Here, each \texttt{phi\_arg} pairs a register with a label identifying the originating block. Initially, we experimented with a label-free control flow representation that used direct pointers to blocks. However, as we will explain later, this made the semantics unnecessarily difficult to define, leading us to prefer label-based control flow.
 
 \subsection{Blocks and Jump Instructions}
 
-ALU instructions and $\phi$-instructions are defined separately enforcing the fact that in basic blocks the $\phi$-instructions appear first, followed by ALU instructions and finally by a jump instruction.
-We define the jump instruction type in mutual recursion with the block type.
+ALU-instructions and $\phi$-instructions are defined separately. This enforces the fact that, in well-formed basic blocks, the $\phi$-instructions appear first, followed by ALU-instructions, and, finally, by a jump instruction.
+Before defining the syntax of a jump instruction, we introduce the conditional operators.
+
+\begin{minipage}{0.45\linewidth}
+\begin{grammar}
+<condition> ::= `CondEq'
+\alt `CondNe'
+\alt `CondLt'
+\alt `CondLe'
+\alt `CondGt'
+\alt `CondGe'
+\end{grammar}
+\end{minipage}
+\hfill
+\begin{minipage}{0.45\linewidth}
+\begin{lstlisting}[style=Rocq]
+Inductive cond : Type :=
+  | CondEq
+  | CondNe
+  | CondLt
+  | CondLe
+  | CondGt
+  | CondGe.
+\end{lstlisting}
+\end{minipage}
+
+These operators represent the possible ways of comparing two items, we use them in the definition of the jump instruction.
+
+\begin{grammar}
+<jump-instruction> ::= `if' <condition> <register> <value> `then' <block> `else' <block>
+\alt `jump' <block>
+\alt `ret' `r(' <register> `)'
+\end{grammar}
+
+This definition uses the \synt{block} non-terminal, representing a basic block. We define its syntax here:
+
+\begin{grammar}
+<block> ::= `Block' `(' <lbl> `)' <phis-or-empty> <instructions-or-empty> `(' <jump-instruction> `)'
+\end{grammar}
+
+We then implement the jump instruction type in mutual recursion with the block type.
 
 \begin{lstlisting}[style=Rocq]
 CoInductive block : Type :=
@@ -129,26 +224,24 @@ with jinst : Type :=
   | Ret : reg -> jinst.
 \end{lstlisting}
 
-Control flow is encoded directly using block references instead of labels, preventing accidental jumps to nonexistent blocks. This definition naturally forms a control-flow graph, where blocks are nodes and jump instructions define the edges.
-
-Finally, a \gls{cfg} as we described in \Cref{subsec:cfg} is a set of blocks where we identify a start block and a control flow relation, it is sufficient to provide the following definition:
+Control flow is encoded directly using block references instead of labels, preventing accidental jumps to nonexistent blocks. This definition naturally forms a \gls{cfg}, where the nodes are the basic blocks and jump instructions define the control flow relation. Finally, in order to define the starting point of the \gls{cfg}, we provide this definition.
 
 \begin{lstlisting}[style=Rocq]
 Definition program : Type := block.
 \end{lstlisting}
 
-Where the starting point of the \gls{cfg} is the first block we encounter during a visit and the blocks set of the \gls{cfg} is the set of blocks reachable from the first block.
+Where the starting point is the first block we encounter during a visit of \texttt{program}, and the set of blocks of the \gls{cfg} is the set of blocks reachable from the starting point.
 
-Now that we covered the main parts of the \gls{jair} implementation, we demonstrate the capabilities of our representation in \Cref{fig:example-jair} with an example of the Fibonacci function along with the same example in a \gls{ssa} form representation.
+After covering the \gls{jair} implementation, we demonstrate its capabilities in \Cref{fig:example-jair} with an example of the Fibonacci function along with the same example in a \gls{ssa} form representation.
 
 \begin{figure}[ht]
 \centering
 \begin{minipage}{0.65\textwidth}
 \begin{lstlisting}[style=Rocq]
-Definition example_block_3 : block :=
+Definition b3 : block :=
   Block (Normal 3) [] [] (ret r(6)).
 
-CoFixpoint example_block_2 : block :=
+CoFixpoint b2 : block :=
   Block (Normal 2) [
     r(3) <- phi [(0, Normal 1); (4, Normal 2)];
     r(4) <- phi [(1, Normal 1); (6, Normal 2)];
@@ -158,17 +251,17 @@ CoFixpoint example_block_2 : block :=
     r(7) <- r(5) - i(1)
   ] (
     if r(7) = i(1)
-    then example_block_3
-    else example_block_2
+    then b3
+    else b2
   ).
 
-Definition example_block_1 : block :=
+Definition b1 : block :=
   Block (Normal 1) [] [
     r(0) <- i(0);  (* Second temp *)
     r(1) <- i(1);  (* First temp *)
     r(2) <- i(12)  (* Iterator *)
   ] (
-    Jump example_block_2
+    jump b2
   ).
 \end{lstlisting}
 \end{minipage}
@@ -195,48 +288,68 @@ Definition example_block_1 : block :=
 \subsection{Limitations}
 \label{subsec:limitations}
 
-Despite our efforts to use Rocq's type system to rule out incorrect programs, certain ill-formed programs cannot be excluded purely by the syntax, we now provide examples of such cases.
-
-A fundamental problem is that the two core policies of an \gls{ssa} form representation are not enforced, namely multiple assignments to the same register and the use of undefined registers are still possible:
+Initially, we opted for a label-less representation of basic blocks.
+Later in the project we saw the necessity of introducing them. Take the following example of a label-less program:
 
 \begin{lstlisting}[style=Rocq]
-Definition double_assignment : block :=
+Definition b3 : block :=
+  Block [r(3) <- phi [1, 2]] [] (ret r(3)).
+Definition b2 : block :=
+  Block [] [r(2) <- i(2)] (Jump b3).
+Definition b1 : block :=
+  Block [] [r(1) <- i(1)] (Jump b2).
+\end{lstlisting}
+
+At line 2, we use a $\phi$-instruction. However, we do not encode the order of the predecessors \texttt{b1} and \texttt{b2}. Because of that, the $\phi$-instruction cannot know which of the two arguments belongs in which predecessor. In this simple case, it is immediate to see that \texttt{r1} belongs to \texttt{b1}, and \texttt{r2} belongs to \texttt{b2}. Even so, we must keep in mind that some $\phi$-instructions may use variables that are not defined in their direct predecessors. For this reason, we adopted labels at the cost of introducing possible inconsistencies in the representation. We will now talk about these inconsistencies.
+
+First, uniqueness of labels is not enforced. This can lead to conflicting block labels, as shown in the following example, where we define two blocks with label \texttt{(Normal 0)}.
+
+\begin{lstlisting}[style=Rocq]
+CoFixpoint b1 : block :=
+  Block (Normal 0) [] [] (jump b2)
+with b2 : block :=
+  Block (Normal 0) [] [] (jump b1).
+\end{lstlisting}
+
+Another problem is that $\phi$-instructions may include inconsistent or invalid arguments. In the following example, the number of predecessors, listed in the $\phi$-instruction at line 2, does not match the actual number of predecessors. Furthermore, the labels referenced by the $\phi$-instruction do not exist:
+
+\begin{lstlisting}[style=Rocq]
+Definition b2 : block :=
+  Block (Normal 1) [
+    r(1) <- phi [(1, 5); (2, 6); (3; 7)]] [] (ret r(0)).
+Definition b1 : block :=
+  Block (Normal 0) [] [] (jump b2).
+\end{lstlisting}
+
+Despite our efforts to rule out incorrect \gls{ssa} programs, certain ill-formed programs cannot be excluded purely by the syntax. We now provide examples of such cases.
+
+A fundamental problem is that the two core policies of a \gls{ssa} form representation (see \Cref{def:ssa}) are not enforced. In particular, multiple assignments to the same register are allowed. Take the following example:
+
+\begin{lstlisting}[style=Rocq]
+Definition b1 : block :=
   Block (Normal 0) [] [
     r(1) <- i(0);
     r(1) <- i(1)
   ]
   (ret r(1)).
+\end{lstlisting}
 
-Definition undefined_variable : block :=
+At line 4, we define variable \texttt{r(1)} for a second time.
+Moreover, the usage of undefined variables is admitted:
+
+\begin{lstlisting}[style=Rocq]
+Definition b1 : block :=
   Block (Normal 0) [] [r(1) <- r(0)] (ret r(1)).
 \end{lstlisting}
 
-Similarly, uniqueness of labels is not enforced, which can lead to conflicting block labels, as shown in the following example:
-
-\begin{lstlisting}[style=Rocq]
-CoFixpoint double_lbl_1 : block :=
-  Block (Normal 0) [] [] (Jump double_lbl_2)
-with double_lbl_2 : block :=
-  Block (Normal 0) [] [] (Jump double_lbl_1).
-\end{lstlisting}
-
-Finally, $\phi$-instructions may include inconsistent or invalid arguments. For example, the number of the predecessors listed in a $\phi$-instruction may not match the actual number of predecessors:
-
-\begin{lstlisting}[style=Rocq]
-Definition ill_formed_phi_2 : block :=
-  Block (Normal 1) [
-    r(1) <- phi [(1, 5); (2, 6); (3; 7)]] [] (ret r(0)).
-Definition ill_formed_phi_1 : block :=
-  Block (Normal 0) [] [] (Jump ill_formed_phi_2).
-\end{lstlisting}
-
-Although these issues cannot be resolved by the type system alone, they can be caught during a previous semantic analysis phase.
+In the previous snippet, at line 2, we define \texttt{r(1)}, using variable \texttt{r(0)}, which is undefined.
+Although these issues cannot be resolved by the type system alone, they can be caught during a previous phase of semantic analysis.
 
 \section{A \gls{jair} Interpreter}
-\label{sec:jair-int}
+\label{sec:jair-vm}
 
-We now implement a small-step interpreter for our intermediate representation, we do this for two reasons.
-The first one is to clearly state the semantics of \gls{jair}. The second one is that, in order to test register assignment, we will compare the result of a program executed on the interpreter virtual machine with the result of the same program executed on bare hardware, if the two results match this will suggest that the semantics of the program are preserved even after register assignment.
+We now implement a small-step interpreter for our intermediate representation. We do this for two reasons.
+The first one is to clearly state the semantics of \gls{jair}. The second one has to do with the testing of our \gls{ra} pipeline. In \Cref{cha:extraction}, we compare the result of a program executed on the interpreter virtual machine with the result of the same program executed on bare hardware. If the two results match this suggests that the semantics of the program are preserved even after \gls{ra}.
 The definition of the virtual machine is straightforward as its components are just the register file, implemented as a map from registers to integers, and the memory, implemented as list of integers.
 
 \begin{lstlisting}[style=Rocq]
@@ -267,9 +380,9 @@ Definition set_reg (m : vm) (r : reg) (c : cell) : vm :=
   end.
 \end{lstlisting}
 
-Here, we take the current register file map, and we wrap it with a lambda function, if the argument of that function matches register \texttt r, we return the value \texttt c, otherwise we perform $\beta$-reduction with the previous version of the register file map.
+Here, we take the current register file map and we wrap it with a lambda function, if the argument of that function matches register \texttt r, we return the value \texttt c, otherwise we perform $\beta$-reduction with the previous version of the register file map.
 
-Now, we define analogous operations for memory access. In our implementation memory does not support random access, instead, we use a list that grows whenever a new value is stored, filling the previously uninitialized memory locations with zeroes. The function to retrieve the content of a memory location is defined as follows:
+Now, we define analogous operations for memory access. In our implementation memory does not support random access. Instead, we use a list that grows whenever a new value is stored, filling the previously uninitialized memory locations with zeroes. The function to retrieve the content of a memory location is defined as follows:
 
 \begin{lstlisting}[style=Rocq]
 Definition get_cell (m : vm) (i : nat) : cell :=
@@ -287,12 +400,12 @@ Definition get_cell (m : vm) (i : nat) : cell :=
 
 The recursive function considers three cases:
 \begin{itemize}
-  \item If the memory is empty, then the value we are trying to retrieve is zero;
-  \item If the index is zero, we return the value of the current memory location;
+  \item If the memory is empty, then the value we are trying to retrieve is Zero;
+  \item If the index is Zero, we return the value of the current memory location;
   \item Otherwise, if we have not reached the desired address yet, we perform a recursive call on the remaining memory;
 \end{itemize}
 
-Finally, the function for writing a value to a memory location is defined as:
+We define the function for writing a value to a memory location:
 
 \begin{lstlisting}[style=Rocq]
 Definition set_cell (m : vm) (i : nat) (c : cell) : vm :=
@@ -317,7 +430,7 @@ The recursive function handles four cases:
   \item Finally, if we have not reached the intended address yet, we perform a recursive call on the remaining memory;
 \end{itemize}
 
-The only remaining task is to define a function that simulates program execution, ideally we would want that function to have type \texttt{vm $\to$ program $\to$ vm} taking the initial state of the virtual machine and the program as inputs and returning the new state of the virtual machine.
+The remaining task is to define a function that simulates program execution, ideally we would want that function to have type \texttt{vm $\to$ program $\to$ vm} taking the initial state of the virtual machine and the program as inputs and returning the new state of the virtual machine.
 Unfortunately, as we mentioned in \Cref{subsec:funterm}, Rocq does not allow for the definition of functions of which we cannot prove termination, and proving it for this function would entail solving the halting problem. We thus resort to using fuel based recursion for this case.
 
 \begin{lstlisting}[style=Rocq]
@@ -338,6 +451,6 @@ Fixpoint run (m : vm) (p : program) (fuel : nat) : vm :=
   end.
 \end{lstlisting}
 
-The procedure works this way: if we are out of fuel we terminate, and we return the current state of the virtual machine, otherwise we proceed with the computation.
-We run the body of instructions of the current block with the function \texttt{run\_insts}, yielding a new state of the virtual machine. We then treat each jump instruction differently, in the case of a conditional jump we evaluate the condition with the \texttt{eval\_cond} function, in the other two cases no evaluation is needed. Finally, before jumping to the next block we execute its $\phi$-instructions, to do so we call the \texttt{run\_phis} function passing as arguments the virtual machine, the current block and the successor block.
-We continue with the computation until we either run out of fuel or we reach the \texttt{Ret} instruction, saving the result of the program to register zero.
+The procedure works this way: if we are out of fuel, we terminate, and we return the current state of the virtual machine. Otherwise, we proceed with the computation.
+We run the body of instructions of the current block with the function \texttt{run\_insts}, yielding a new state of the virtual machine. We then treat each jump instruction differently. In the case of a conditional jump we evaluate the condition with the \texttt{eval\_cond} function. Instead, in the other two cases, no evaluation is needed. Finally, before jumping to the next block we execute its $\phi$-instructions. We do that by call the \texttt{run\_phis} function passing as arguments the virtual machine, the current block, and the successor block.
+We continue with the computation until we either run out of fuel, or we reach the \texttt{Ret} instruction, saving the result of the program into the first register.
