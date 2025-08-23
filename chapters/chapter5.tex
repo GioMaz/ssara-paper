@@ -7,15 +7,15 @@ After defining all the steps of our register assignment pipeline, we extract the
 In particular, we extract the following functions:
 \begin{itemize}
   \item \texttt{Vm.run} to interpret our programs;
-  \item \texttt{LivenessInfo.analyze\_program} to perform liveness analysis;
-  \item \texttt{InterfGraph.get\_ig} to obtain the interference graph;
+  \item \texttt{LivenessInfo.analyze\_program} to obtain the liveness information of the program;
+  \item \texttt{InterfGraph.get\_ig} to convert the liveness information into an interference graph;
   \item \texttt{Peo.eliminate} to obtain the \gls{peo};
-  \item \texttt{Color.get\_coloring} to construct our coloring map;
-  \item \texttt{Color.color\_program} to translate the program into one using physical registers;
-  \item \texttt{Destruct.ssa\_destruct} to remove the $\phi$-instructions;
+  \item \texttt{Color.get\_coloring} to construct the coloring map;
+  \item \texttt{Color.color\_program} to convert each virtual register of the program into its assigned physical register;
+  \item \texttt{Destruct.ssa\_destruct} to translate the $\phi$-instructions;
 \end{itemize}
 
-After extracting we compose the various steps of our pipeline into the \texttt{regassign} function:
+After extraction, we compose the various phases of our \gls{ra} pipeline into the \texttt{regassign} function:
 
 \begin{lstlisting}[style=OCaml]
 let regassign irvreg_program =
@@ -33,10 +33,10 @@ let regassign irvreg_program =
 \end{lstlisting}
 
 This function accepts a program written in \gls{jair} and returns an equivalent program without $\phi$-instructions and using only x86-64 registers.
-Note that, at line 8, we panic if we are not able to perform the coloring due to a high number of variables, this is required since we do not perform spilling.
+Note that, at line 8, we panic if we are not able to perform the coloring due to a high number of variables, this check is mandatory, as we do not perform spilling.
 
-Finally, with this representation, the generation of assembly code is straightforward, we simply perform a DFS on the \gls{cfg} and generate the assembly code for each basic block we visit.
-In particular, for our implementation, we chose to emit assembly with the Netwide Assembler (NASM) syntax.
+After obtaining the converted data structure, the generation of assembly code is straightforward. We simply perform a depth-first visit on the \gls{cfg} and generate the assembly code for each basic block.
+In our implementation, we chose to emit assembly with the \gls{nasm} syntax.
 
 The following OCaml function does exactly so, writing the assembly code of a program into the specified output channel:
 
@@ -80,10 +80,47 @@ let gen_irpreg_program out program =
 ;;
 \end{lstlisting}
 
-At line 14 we generate the label using the \texttt{gen\_label} function, then, at line 17 we generate the body of instructions of the basic block, and finally, at line 20, we generate the jump instruction. We continue with the recursion until we either reach a \texttt{Ret} instruction or we encounter an already visited block.
+At line 14 we generate the label of the current block, using the \texttt{gen\_label} function. Then, at line 17 we generate the body of instructions of the basic block. Finally, at line 20, we generate the jump instruction. We continue with the recursion until we either reach a \texttt{Ret} instruction or we encounter an already visited block.
 
-A subtle detail, when translating from \gls{jair} to x86-64 assembly, is that our language is a three-address code representation, while x86-64 assembly only allows instructions to have a maximum of two arguments.
-To handle cases where the operands of an instruction are greater than two we introduce the following function:
+It is important to note, that our language is a three-address code representation. While \gls{nasm} only allows instructions that have a maximum of two arguments. Because of that, translation of binary operations must be treated specially.
+Given physical registers \texttt A \texttt B, and \texttt C, we identify all the possible cases of a binary, non-commutative operation:
+\lstset{style=Rocq}
+\begin{enumerate}
+  \item \label{itm:i1} \lstinline{Definition i1 : inst := r(A) <- r(A) / r(A).}
+  \item \label{itm:i2} \lstinline{Definition i2 : inst := r(A) <- r(A) / r(B).}
+  \item \label{itm:i3} \lstinline{Definition i3 : inst := r(A) <- r(B) / r(A).}
+  \item \label{itm:i4} \lstinline{Definition i4 : inst := r(A) <- r(B) / r(B).}
+  \item \label{itm:i5} \lstinline{Definition i5 : inst := r(A) <- r(B) / r(C).}
+\end{enumerate}
+
+\lstset{style=NASM}
+In \Cref{itm:i1}, a \gls{nasm} translation is straightforward, we can, in fact, use \lstinline{idiv A A}. The same goes for \Cref{itm:i2}, where we can use \lstinline{idiv A B}. However, in \Cref{itm:i3}, we can clearly see that no single \gls{nasm} instruction can perform the intended operation. In particular, if we translate the operation as \lstinline{idiv A B}, we obtain an incorrect result, as division is non-commutative. Whereas, if we translate it as \lstinline{idiv B A}, the result will be written to register \texttt B, which is not the intended destination. For this case we use the following approach:
+
+\begin{lstlisting}[style=NASM]
+mov tmp A
+mov A B
+div A tmp
+\end{lstlisting}
+
+At line 1, we move the value of \texttt A into a temporary. At line 2, we move the content of \texttt B into the target register \texttt A. Finally, at line 3, we divide \texttt A (containing the initial value of \texttt B) by \texttt{tmp} (containing the initial value of \texttt A).
+It is important to note that register \texttt{tmp} is only used inside \texttt{Point1} and \texttt{Point2} blocks. Because of that, there is no risk of colliding with a previous usage of that register.
+
+Now, even \Cref{itm:i4} requires multiple instructions, as a literal translation would still overwrite the content of \texttt B. We solve it this way, with two instruction:
+
+\begin{lstlisting}
+mov A B
+div A B
+\end{lstlisting}
+
+The same goes for \Cref{itm:i5}, which can be translated into:
+
+\begin{lstlisting}
+mov A B
+div A C
+\end{lstlisting}
+
+In the previous examples, we used the division operator, which is binary and non-commutative. This is arguably the hardest case we could encounter, as for unary operators and load/store instructions, \gls{nasm} translation is straightforward.
+We introduce a function specifically for handling the cases we just discussed:
 
 \begin{lstlisting}[style=OCaml]
 let gen_3ac_2ac out opcode r r' v =
@@ -99,9 +136,14 @@ let gen_3ac_2ac out opcode r r' v =
 
     (* r(0) <- r(1) / r(2) *)
     | IRPreg.Reg r'' ->
-      gen_bininst out MOV     (string_of_reg tmp) (string_of_reg r');
-      gen_bininst out opcode  (string_of_reg tmp) (string_of_reg r'');
-      gen_bininst out MOV     (string_of_reg r)   (string_of_reg tmp);
+      if r = r'' then (
+        gen_bininst out MOV     (string_of_reg tmp) (string_of_reg r');
+        gen_bininst out opcode  (string_of_reg tmp) (string_of_reg r'');
+        gen_bininst out MOV     (string_of_reg r)   (string_of_reg tmp)
+      ) else (
+        gen_bininst out MOV     (string_of_reg r) (string_of_reg r');
+        gen_bininst out opcode  (string_of_reg r) (string_of_reg r'')
+      )
 
     (* r(0) <- r(1) / p(100) *)
     | IRPreg.Ptr p ->
@@ -110,15 +152,7 @@ let gen_3ac_2ac out opcode r r' v =
 ;;
 \end{lstlisting}
 
-We handle three different cases, depending on the last operand:
-\begin{itemize}
-  \item If the third operand is an immediate value, we move the second register into the destination, and finally we perform the operation with the immediate value;
-  \item If the third operand is another register, we move the second register into the temporary register, we perform the operation with the third register, and finally we move the temporary register into the destination register;
-  \item If the third operand is a pointer, the behavior is the same as in the first point;
-\end{itemize}
-Now, because the temporary register, defined by \texttt{tmp}, is used only in the blocks introduced by the SSA destruction phase, it is safe to use it inside \texttt{Normal} blocks, since, during the coloring, we exclude \texttt{tmp} from the list of colors.
-
-To show an example of a program translation, we take the program defined in \Cref{fig:example-jair} and compile it. The result is shown in \Cref{fig:example-nasm}.
+At line 2, we handle cases where the destination register is the same as the first operand. This translates directly into a \gls{nasm} instruction. At line 8, we handle the case where the second operand is an immediate value. Here, we just need to move the first operand into the destination register, and then perform the operation. At line 14, we implement the cases we discussed previously. Expect for \Cref{itm:i1} and \Cref{itm:i2}, which are handled together with the other instructions at line 2. Finally, at line 24, we handle the case where the second operand is a pointer. Since pointers are also immediate values, we emit the same instructions as the first branch of the match.
 
 \begin{figure}[ht]
 \begin{lstlisting}[style=NASM]

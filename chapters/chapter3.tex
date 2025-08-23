@@ -43,7 +43,7 @@ Inductive preg : Type :=
   | UNASSIGNED.
 \end{lstlisting}
 
-We also include the \texttt{UNASSIGNED} register, this register is used as a default value for the coloring, removing the need of returning an optional value everywhere. Later we will prove that the coloring function will never return this constructor.
+We also include the \texttt{UNASSIGNED} register, this register is used as a default value for the coloring, we explain the purpose of this register more in depth in \Cref{sec:ra}. Moreover, we will prove that the coloring function will never return this constructor, in \Cref{cha:verification}.
 
 \subsection{Labels}
 
@@ -140,7 +140,8 @@ We try to encode the data required by a $\phi$-instruction with the following de
 \nt{phi-arguments-or-nil} &::= [ \nt{phi-arguments} ] \mid []
 \end{align*}
 
-And its correspondent type, for a single argument:
+Here, even if $\phi$-instructions that have no arguments are considered ill-formed, we still allow them. This is because, in our internal representation, the arguments of a $\phi$-instruction are implemented as a list.
+We define the correspondent type, for a single argument:
 
 \begin{lstlisting}[style=Rocq]
 Definition phi_arg : Type := (reg * lbl).
@@ -148,11 +149,13 @@ Definition phi_arg : Type := (reg * lbl).
 
 Semantically, the \texttt{reg} instance is the source of the copy iff the control flow comes from the \texttt{lbl} instance.
 
-We define the syntax of the $\phi$-instruction, as an assignment of one of the possible \synt{phi-arguments} to the destination \synt{register}.
+We define the syntax of the $\phi$-instruction, as an assignment of one of the possible $\nt{phi-arguments}$ to the destination $\nt{register}$.
 
 \begin{align*}
 \nt{phi} ::= r( \nt{register} ) \leftarrow \phi \ \nt{phi-arguments-or-nil}
 \end{align*}
+
+The same goes for the data type:
 
 \begin{lstlisting}[style=Rocq]
 Inductive phi : Type :=
@@ -204,13 +207,13 @@ These operators represent the possible ways of comparing two items, we use them 
 &\mid \text{ret} \ r( \nt{register} )
 \end{align*}
 
-This definition uses the \synt{block} non-terminal, representing a basic block. We define its syntax here:
+This definition uses the $\nt{block}$ non-terminal, representing a basic block. We define its syntax here:
 
 \begin{align*}
 \nt{block} ::= \text{Block} \ ( \nt{label} ) \ \nt{phis-or-nil} \ \nt{instructions-or-nil} \ ( \nt{jump-instruction} )
 \end{align*}
 
-We then implement the jump instruction type in mutual recursion with the block type.
+Whereas, for the data structure, we implement the jump instruction type in mutual recursion with the block type.
 
 \begin{lstlisting}[style=Rocq]
 CoInductive block : Type :=

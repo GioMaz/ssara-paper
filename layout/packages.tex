@@ -1,7 +1,6 @@
 % General
 
 \usepackage[utf8]{inputenc}
-\usepackage{syntax}
 \usepackage{geometry}
 \usepackage{csquotes}
 \usepackage{graphicx}
@@ -12,7 +11,7 @@
 \usepackage{appendix}
 \usepackage{lipsum}     %testo di prova (si può cancellare una volta iniziato a scrivere)
 \usepackage{lineno}
-% \linenumbers
+\linenumbers
 
 %\usepackage[9-15]{pagesel}
 % attenzione: la filigrana in prima pagina ha opacità massima con questa opzione attivata
@@ -109,12 +108,12 @@
     mathescape=true,
     keywordstyle=[1]\color{myblue}\bfseries,    % Declarations
     keywordstyle=[2]\color{mypurple}\bfseries,  % Control flow
-    keywordstyle=[3]\color{orange}\bfseries,    % Constants
+    % keywordstyle=[3]\color{orange}\bfseries,    % Constants
     keywordstyle=[4]\color{teal}\bfseries,      % Misc keywords
     tabsize=2,
     basicstyle=\ttfamily\small,
     commentstyle=\color{green!50!black}\itshape,
-    stringstyle=\color{red},
+    stringstyle=\color{orange},
     showstringspaces=false,
     numbers=left,
     numberstyle=\tiny\color{gray},
@@ -125,7 +124,7 @@
 
 \lstdefinelanguage{NASM}{
   morekeywords={
-    mov, add, sub, mul, div, xor, and, or, inc, dec, jmp, cmp, je, jne, jl, jle, jg, jge, call, ret, push, pop, syscall
+    mov, add, sub, div, mul, imul, idiv, xor, and, or, inc, dec, jmp, cmp, je, jne, jl, jle, jg, jge, call, ret, push, pop, syscall
   },
   sensitive=true,
   morecomment=[n]{;}{}, % NASM uses ';' for comments
@@ -183,6 +182,7 @@
 \newacronym{peo}{PEO}{Perfect Elimination Order}
 \newacronym{cfg}{CFG}{Control Flow Graph}
 \newacronym{bnf}{BNF}{Backus-Naur Form}
+\newacronym{nasm}{NASM}{Netwise Assembler}
 
 \usepackage{graphicx} % Required for inserting images
 \usepackage[T1]{fontenc}
