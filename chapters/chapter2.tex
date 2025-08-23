@@ -206,7 +206,7 @@ However, if we come from the second predecessor, we need to perform a swap of $r
 \section{\glsentrylong{ra}}
 \label{sec:ra}
 
-\gls{ra} assigns a potentially unbounded number of virtual registers to a limited number of physical registers. A well-known approach reduces this problem to graph coloring of the interference graph~\cite{HGG:2006:RA_SSA}. Before talking about this approach, let us introduce some definitions.
+\gls{ra} assigns a potentially unbounded number of virtual registers to a limited number of physical registers. A well-known approach reduces this problem to graph coloring of the interference graph~\cite{HGG:2006:RA-SSA}. Before talking about this approach, let us introduce some definitions.
 
 \begin{definition}[Liveness]\label{def:liveness}
   Given a \gls{cfg}, a variable $u$ is live at instruction $i$, if $u$ is already defined, and its value may be used by a future instruction.

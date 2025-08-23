@@ -49,9 +49,9 @@ We also include the \texttt{UNASSIGNED} register, this register is used as a def
 
 We now define the non-terminal of a block label:
 
-\begin{grammar}
-<label> ::= `Normal' <natural> | `Point1' <natural> | `Point2' <natural>
-\end{grammar}
+\begin{align*}
+\nt{label} ::= \text{Normal} \ \mathbb N \mid \text{Point1} \ \mathbb N \mid \text{Point2} \ \mathbb N
+\end{align*}
 
 Implemented in Rocq with the following definition:
 
@@ -69,9 +69,9 @@ The label type has three constructors, \Cref{sec:destruct} discusses this more i
 In order to perform computations, \gls{jair} provides arithmetic and logical instructions.
 We define the \texttt{val} type which represents an operand of these instructions. It can be either an immediate integer, a register, or a pointer to a memory location (represented by a natural number). The following is the \gls{bnf} definition of the value type, along with its type definition.
 
-\begin{grammar}
-<value> ::= `i(' <integer> `)' | `r(' <register> `)' | `p(' <pointer> `)'
-\end{grammar}
+\begin{align*}
+\nt{value} ::= i( \mathbb Z ) \mid r( \text{register} ) \mid p( \text{pointer} )
+\end{align*}
 
 \begin{lstlisting}[style=Rocq]
 Inductive val : Type :=
@@ -83,14 +83,14 @@ Inductive val : Type :=
 We define the syntax of expressions.
 
 \begin{minipage}{0.45\textwidth}
-\begin{grammar}
-<expression> ::= <value>
-\alt `load' <value>
-\alt `r(' <register> `)' `+' <value>
-\alt `r(' <register> `)' `-' <value>
-\alt `r(' <register> `)' `*' <value>
-\alt `r(' <register> `)' `/' <value>
-\end{grammar}
+\begin{align*}
+\nt{expression} &::= \nt{value} \\
+&\mid \text{load} \nt{value} \\
+&\mid r( \nt{register}) + \nt{value} \\
+&\mid r( \nt{register}) - \nt{value} \\
+&\mid r( \nt{register}) * \nt{value} \\
+&\mid r( \nt{register}) / \nt{value} \\
+\end{align*}
 \end{minipage}
 \hfill
 \begin{minipage}{0.45\textwidth}
@@ -111,10 +111,10 @@ As can be seen from the previous definitions, binary expressions always use a re
 
 The instruction type \texttt{inst} reflects the core operations in our language. An instruction can either define a register by assigning to it the result of an expression, or it can store a value into memory.
 
-\begin{grammar}
-<instruction> ::= `r(' <register> `)' `<-' <expression>
-\alt `store' `r(' <register> `)' `r(' <register> `)'
-\end{grammar}
+\begin{align*}
+\nt{instruction} &::= r( \nt{register} ) \leftarrow \nt{expression} \\
+&\mid \text{store} \ r( \nt{register} ) \ r( \nt{register} )
+\end{align*}
 
 \begin{lstlisting}[style=Rocq]
 Inductive inst : Type :=
@@ -125,22 +125,20 @@ Inductive inst : Type :=
 \texttt{Store} is treated specially, because it does not produce a result that can be assigned to a register. Therefore, it cannot be expressed as a \texttt{Def}.
 Instructions are often grouped into sequences that are executed linearly. To represent it, we introduce the following non-terminals in our grammar.
 
-\begin{grammar}
-<instructions> ::= <instruction> `;' <instructions> | <instruction>
-
-<instructions-or-empty> ::= `[' <instructions> `]' | `[]'
-\end{grammar}
+\begin{align*}
+\nt{instructions} &::= \nt{instruction} ; \ \nt{instructions} \mid \nt{instruction} \\
+\nt{instructions-or-nil} &::= [ \nt{instructions} ] \mid []
+\end{align*}
 
 \subsection{$\phi$-Instructions}
 
 \Cref{sec:ssa} defines a sequence of $\phi$-instructions as a parallel move based on the predecessor in the control flow.
 We try to encode the data required by a $\phi$-instruction with the following definitions. We define the syntax of the arguments of a $\phi$-instruction.
 
-\begin{grammar}
-<phi-arguments> ::= `(' <register> `,' <label> `)' `;' <phi-arguments> | (<register>, <label>)
-
-<phi-arguments-or-empty> ::= `[' <phi-arguments> `]' | `[]'
-\end{grammar}
+\begin{align*}
+\nt{phi-arguments} &::= ( \nt{register} , \ \nt{label} ) ; \ \nt{phi-arguments} \mid (\nt{register} , \ \nt{label}) \\
+\nt{phi-arguments-or-nil} &::= [ \nt{phi-arguments} ] \mid []
+\end{align*}
 
 And its correspondent type, for a single argument:
 
@@ -152,9 +150,9 @@ Semantically, the \texttt{reg} instance is the source of the copy iff the contro
 
 We define the syntax of the $\phi$-instruction, as an assignment of one of the possible \synt{phi-arguments} to the destination \synt{register}.
 
-\begin{grammar}
-<phi> ::= `r(' <register> `)' `<-' `phi' <phi-arguments-or-empty>
-\end{grammar}
+\begin{align*}
+\nt{phi} ::= r( \nt{register} ) \leftarrow \phi \ \nt{phi-arguments-or-nil}
+\end{align*}
 
 \begin{lstlisting}[style=Rocq]
 Inductive phi : Type :=
@@ -163,11 +161,10 @@ Inductive phi : Type :=
 
 Much like ALU-instructions, $\phi$-instructions are often grouped into sequences. Because of that we introduce the following non-terminals.
 
-\begin{grammar}
-<phis> ::= <phi> `;' <phis>
-
-<phis-or-empty> ::= `[' <phis> `]' | `[]'
-\end{grammar}
+\begin{align*}
+\nt{phis} &::= \nt{phi} ; \ \nt{phis} \\
+\nt{phis-or-nil} &::= [ \nt{phis} ] \mid []
+\end{align*}
 
 % Here, each \texttt{phi\_arg} pairs a register with a label identifying the originating block. Initially, we experimented with a label-free control flow representation that used direct pointers to blocks. However, as we will explain later, this made the semantics unnecessarily difficult to define, leading us to prefer label-based control flow.
 
@@ -177,14 +174,14 @@ ALU-instructions and $\phi$-instructions are defined separately. This enforces t
 Before defining the syntax of a jump instruction, we introduce the conditional operators.
 
 \begin{minipage}{0.45\linewidth}
-\begin{grammar}
-<condition> ::= `CondEq'
-\alt `CondNe'
-\alt `CondLt'
-\alt `CondLe'
-\alt `CondGt'
-\alt `CondGe'
-\end{grammar}
+\begin{align*}
+\nt{condition} &::= r(\text{register}) = \nt{val} \\
+&\mid r(\text{register}) \neq \nt{val} \\
+&\mid r(\text{register}) < \nt{val} \\
+&\mid r(\text{register}) \leq \nt{val} \\
+&\mid r(\text{register}) > \nt{val} \\
+&\mid r(\text{register}) \geq \nt{val} \\
+\end{align*}
 \end{minipage}
 \hfill
 \begin{minipage}{0.45\linewidth}
@@ -201,17 +198,17 @@ Inductive cond : Type :=
 
 These operators represent the possible ways of comparing two items, we use them in the definition of the jump instruction.
 
-\begin{grammar}
-<jump-instruction> ::= `if' <condition> <register> <value> `then' <block> `else' <block>
-\alt `jump' <block>
-\alt `ret' `r(' <register> `)'
-\end{grammar}
+\begin{align*}
+\nt{jump-instruction} &::= \text{if} \ \nt{condition} \ \text{then} \ \nt{block} \ \text{else} \ \nt{block} \\
+&\mid \text{jump} \ \nt{block} \\
+&\mid \text{ret} \ r( \nt{register} )
+\end{align*}
 
 This definition uses the \synt{block} non-terminal, representing a basic block. We define its syntax here:
 
-\begin{grammar}
-<block> ::= `Block' `(' <lbl> `)' <phis-or-empty> <instructions-or-empty> `(' <jump-instruction> `)'
-\end{grammar}
+\begin{align*}
+\nt{block} ::= \text{Block} \ ( \nt{label} ) \ \nt{phis-or-nil} \ \nt{instructions-or-nil} \ ( \nt{jump-instruction} )
+\end{align*}
 
 We then implement the jump instruction type in mutual recursion with the block type.
 
@@ -348,8 +345,7 @@ Although these issues cannot be resolved by the type system alone, they can be c
 \section{A \gls{jair} Interpreter}
 \label{sec:jair-vm}
 
-We now implement a small-step interpreter for our intermediate representation. We do this for two reasons.
-The first one is to clearly state the semantics of \gls{jair}. The second one has to do with the testing of our \gls{ra} pipeline. In \Cref{cha:extraction}, we compare the result of a program executed on the interpreter virtual machine with the result of the same program executed on bare hardware. If the two results match this suggests that the semantics of the program are preserved even after \gls{ra}.
+We now implement an interpreter for our intermediate representation. We do this for two reasons. The first one is to clearly state the semantics of \gls{jair}. The second one has to do with the testing of our \gls{ra} pipeline. In \Cref{cha:extraction}, we compare the result of a program executed on the interpreter virtual machine with the result of the same program executed on bare hardware. If the two results match this suggests that the semantics of the program are preserved even after \gls{ra}.
 The definition of the virtual machine is straightforward as its components are just the register file, implemented as a map from registers to integers, and the memory, implemented as list of integers.
 
 \begin{lstlisting}[style=Rocq]
