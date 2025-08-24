@@ -19,7 +19,7 @@ we start from the last instruction of the program and go back to the start instr
 
 Since in our language instructions can be of three different kinds we define different dataflow equations for each instruction type.
 
-We start by defining the dataflow equations for the ALU instructions:
+We start by defining the dataflow equations for the ALU-instructions:
 \begin{align*}
   \texttt{live\_in[i]} &= \texttt{use[i]} \cup (\texttt{live\_out[i]} \setminus \texttt{def[i]}) \\
   \texttt{live\_out[i]} &= \bigcup \limits_{\texttt j \in \texttt{succ[i]}} \texttt{live\_in[j]}
@@ -39,13 +39,13 @@ We compute:
 \end{align*}
 where \texttt{phi\_defs[ps]} contains the left-hand sides of the $\phi$-instructions.
 
-Starting again with \texttt{live\_out[ps]}, we define it as the union of the variables that are live before the first ALU instruction of the block. \texttt{live\_in[ps]} is instead the set of variables that are defined in the $\phi$-instructions together with the variables that are required after the $\phi$-instructions, intuitively the variables in \texttt{phi\_defs[ps]} are already defined before reaching the start of the block since their execution happens during the jump.
+Starting again with \texttt{live\_out[ps]}, we define it as the union of the variables that are live before the first ALU-instruction of the block. \texttt{live\_in[ps]} is instead the set of variables that are defined in the $\phi$-instructions together with the variables that are required after the $\phi$-instructions, intuitively the variables in \texttt{phi\_defs[ps]} are already defined before reaching the start of the block since their execution happens during the jump.
 
 \section{Register Assignment}
 \label{sec:ra}
 
 % As explained in \Cref{subsec:ssara} register assignment is considered equivalent to the task of graph coloring of the interference graph. Before starting with the coloring let's recall \Cref{def:ig}. A chordal graph is a graph for which there exists a \gls{peo}, that is, there exists a simplicial node such that, if we remove that node the graph is still chordal. The \gls{peo} is then the ordering in which those nodes are removed.
-To perform the coloring we then proceed this way:
+
 The approach we use to perform \gls{ra}~\cite{HGG:2006:RA-SSA} is the following:
 \begin{itemize}
   \item We use the liveness information, obtained from the previous step, to build the interference graph;
@@ -72,7 +72,7 @@ Definition get_ig (pi : ProgramInfo.dict) : InterfGraph.dict :=
     InterfGraph.empty.
 \end{lstlisting}
 
-Where \texttt{ig\_insert\_instinfos} is a function that, given an interference graph and a list of live sets, returns a graph where a clique is added for each live set of the list.
+At line 5, we use \texttt{ig\_insert\_instinfos}. This function, given an interference graph and a list of live sets, returns a graph where a clique is added for each live set of the list.
 
 \subsection{Obtaining a \glsentrylong{peo}}
 \label{subsec:peo}
@@ -86,18 +86,16 @@ Definition is_simplicialb (g : InterfGraph.dict) (r : reg) : bool :=
   is_cliqueb g nbors.
 \end{lstlisting}
 
-In this case \texttt{InterfGraph.get} is simply the function to get the neighborhood of a node, \texttt{regs\_mem} is a boolean function to test membership of a node to a set and finally \texttt{is\_cliqueb} is a boolean function to test whether a set is a clique in a specific graph.
-For the purpose of this project, let's ignore the complexity of the various functions as we are only concerned in building a framework that makes it easy to perform formal verification. Anyway, be reassured that all the functions run in polynomial time.
-
-We now define a function that lets us find a simplicial node in the graph:
+At line 2, we get the neighborhood of \texttt r using \texttt{InterfGraph.get}. At line 3, we check that \texttt r is actually part of the graph. Finally, at line 4, we check whether the neighborhood of \texttt r is a clique, using \texttt{is\_cliqueb}.
+We now define a function that lets us find any simplicial node in a graph:
 
 \begin{lstlisting}[style=Rocq]
 Definition find_next (g : InterfGraph.dict) : option reg :=
   find (is_simplicialb g) (InterfGraph.keys g).
 \end{lstlisting}
 
-As explained in the second step of the coloring procedure, at each iteration we need to find a simplicial node, and that's exactly what \texttt{find\_next} does. Note that the output node is an optional value, since the function may also receive a non-chordal graph which may not have a simplicial node. This in reality could not be the case since we make the assumption that the interference graphs we receive are chordal. Unfortunately because of that we need to propagate the option wrapper to all the return values of the next functions.
-In the extracted code, upon receiving a \texttt{None} constructor we will to throw an exception, signaling to the user that the interference graph (and likely even the initial \gls{jair} program) is malformed.
+Here, we find the first node of the graph that respects the \texttt{(is\_simplicialb g)} condition. Note that the output node is an optional value, since the function may also receive a non-chordal graph which may not have a simplicial node. Because of that we need to propagate the option wrapper to all the return values of the subsequent functions.
+As we will see in \Cref{cha:extraction}, upon receiving a \texttt{None} constructor we will to throw an exception, signaling to the user that the interference graph (and likely even the initial \gls{jair} program) is ill-formed.
 
 Now we proceed with the step function for the \texttt{eliminate} function:
 
@@ -111,11 +109,10 @@ Definition eliminate_step
   end.
 \end{lstlisting}
 
-It takes an interference graph which is chordal, finds a simplicial node, removes it, and returns both the removed node and the resulting graph.
-Note that, if the precondition of the input graph being chordal is met, the function will never return the \texttt{None} constructor. Furthermore, the resulting graph will also be chordal.
-We will talk more about the postconditions in \Cref{cha:verification}.
+This function takes an interference graph which is chordal, finds a simplicial node, removes it, and returns both the removed node and the resulting graph.
+Note that, because of \Cref{def:chordal}, if the input graph is chordal, then the function will never return the \texttt{None} constructor. Furthermore, the resulting graph will also be chordal.
 
-Finally, we can move into the \texttt{eliminate} function, that is, the function for obtaining a \gls{peo}:
+Now we define the \texttt{eliminate} function, that is, the function for obtaining a \gls{peo}:
 
 \begin{lstlisting}[style=Rocq]
 Function eliminate
@@ -126,8 +123,8 @@ Function eliminate
   end.
 \end{lstlisting}
 
-The definition of the function is straightforward, we take an interference graph, and we remove the simplicial nodes until it becomes the empty graph, constantly appending the removed node at the end of the list.
-As was mentioned in \Cref{subsec:funterm} Rocq has trouble automatically verifying the termination of this function, because of that we add an annotation that tells it that the fixed point lies in the size of the interference graph. We will write a proof for this in \Cref{cha:verification}.
+The definition of the function is straightforward. We take an interference graph, and we remove the simplicial nodes until it becomes the empty graph. At each recursive call, we append the removed node at the end of the list.
+As was mentioned in \Cref{subsec:funterm} Rocq has trouble automatically verifying the termination of this function, because of that we add an annotation that tells it that the decreasing property lies in the size of the interference graph. We will also prove this in \Cref{cha:verification}.
 
 \subsection{Coloring}
 \label{subsec:coloring}

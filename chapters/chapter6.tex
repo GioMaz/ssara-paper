@@ -18,13 +18,34 @@ Take the \texttt{eliminate} function defined in \Cref{subsec:peo}, we recursivel
     After one iteration of the algorithm we encounter two possible cases, if no simplicial node is found, we terminate the function immediately. Otherwise, we found a simplicial node $u$, along with the new graph $G' = (V', E')$, in this case $V' = V \setminus \{ u \}$. Finally, since $u \in V$ we can say that $V' \subsetneq V$.
 \end{proof}
 
-\section{Soundness of \texttt{is\_simplicialb}}
+\section{First Invariant of \texttt{eliminate\_step}}
 
-We start by providing a constructive definition of the $\mathrm{Simplicial}$ predicate. After that, we introduce the soundness theorem for the \texttt{is\_simplicialb} function, defined in \Cref{subsec:peo}, with respect to $\mathrm{Simplicial}$.
+We start by providing a constructive definition of the $\mathrm{Simplicial}$ predicate. After that, we introduce the soundness lemma for the \texttt{is\_simplicialb} function, defined in \Cref{subsec:peo}, with respect to $\mathrm{Simplicial}$.
 
 Before defining the predicate, let us introduce some notation.
 
-\begin{definition}[Universal vertex over a subgraph]
+\begin{definition}[Node Addition]
+    Let $G = (V, E)$ and $u$ be a node, we define the addition of the node $u$ as:
+    \[
+        G + u := (V \cup \{ u \}, E)
+    \]
+\end{definition}
+
+\begin{definition}[Node Removal]
+    Let $G = (V, E)$ and $u$ be a node, we define the removal of the node $u$ as:
+    \[
+        G - u := (V \setminus \{ u \}, \{ \{ x, y \} \mid x \neq u \land y \neq u \})
+    \]
+\end{definition}
+
+\begin{definition}[Edge Addition]
+    Let $G = (V, E)$ and $\{ u, v \}$ be an edge, we define the addition of the edge $\{ u, v \}$ as:
+    \[
+        G + \{ u, v \} := (V \cup \{ u, v \}, E \cup \{ \{ u, v \} \})
+    \]
+\end{definition}
+
+\begin{definition}[Universal Vertex Over a Subgraph]
     Let $G = (V, E)$ and $H$ be a subgraph of $G$ with vertex set $V(H)$, we define the graph with a universal vertex $u$ over $H$ as:
     \[
         \addvertex{G}{H}{u} := (\{ V \cup \{ u \}, E \cup \{ \{ u, v \} \;|\; v \in V(H) \} \})
@@ -32,10 +53,10 @@ Before defining the predicate, let us introduce some notation.
 \end{definition}
 
 \begin{definition}[Simplicial]
-The predicate $\mathrm{Simplicial}(u, G)$ on the nodes of a graph is defined inductively by the following rules:
+Let $G = (V, E)$, the predicate $\mathrm{Simplicial}(u, G)$ on the nodes of a graph is defined inductively by the following rules:
 \begin{mathpar}
     \inferrule*[Right=SimplicialSingleton]
-        {u \not \in G}
+        {\neg V(u)}
         {\mathrm{Simplicial}(u, G + u)}
     \\
     \inferrule*[Right=SimplicialNode]
@@ -52,23 +73,71 @@ The predicate $\mathrm{Simplicial}(u, G)$ on the nodes of a graph is defined ind
 \end{mathpar}
 \end{definition}
 
-\begin{theorem}[Soundness of \texttt{is\_simplicialb}]\label{thm:sbsound}
-    Let $G = (V, E)$ and $u \in G$ such that \texttt{is\_simplicialb} returns \texttt{true}, then $\mathrm{Simplicial}(u, G)$ holds.
-\end{theorem}
+\begin{lemma}[Soundness of \texttt{is\_simplicialb}]\label{lem:sbsound}
+    Let $G = (V, E)$ and $u \in V$ such that \texttt{is\_simplicialb} returns \texttt{true}, then $\mathrm{Simplicial}(u, G)$ holds.
+\end{lemma}
 
-\begin{corollary}[Soundness of \texttt{eliminate\_step}]\label{cor:essound1}
+\begin{theorem}[First Invariant of \texttt{eliminate\_step}]\label{thm:inv-elim-1}
     Let $G = (V, E)$, if \texttt{eliminate\_step} returns node $u$, then $\mathrm{Simplicial}(u, G)$.
-\end{corollary}
+\end{theorem}
 \begin{proof}
-    Assume that \texttt{eliminate\_next} returns node $u$, this means that the boolean property \texttt{is\_simplicialb} is \texttt{true} for that node. It follows immediately from \Cref{thm:sbsound} that $\mathrm{Simplicial}(u, G)$.
+    Assume that \texttt{eliminate\_next} returns node $u$, this means that the boolean property \texttt{is\_simplicialb} is \texttt{true} for that node. It follows immediately from \Cref{lem:sbsound} that $\mathrm{Simplicial}(u, G)$.
 \end{proof}
 
-\Cref{thm:sbsound} and \Cref{cor:essound1} are rather important, as they prove that the nodes inside a \gls{peo} are simplicial with respect to the graph where they are extracted.
+\Cref{lem:sbsound} and \Cref{thm:inv-elim-1} are rather important, as they prove that the nodes inside a \gls{peo} are simplicial with respect to the graph where they are extracted.
 
-\section{Completeness of \texttt{is\_simplicialb}}
+\section{Second Invariant of \texttt{eliminate\_step}}
+
+We introduce an inductive definition of the $\mathrm{Chordal}$ relation.
+
+\begin{definition}[Chordal]\label{def:chordal2}
+Let $G = (V, E)$, the predicate $\mathrm{Chordal}_2(G)$ is defined inductively by the following rules:
+\begin{mathpar}
+    \inferrule*[Right=ChordalEmpty]
+        {}
+        {\mathrm{Chordal}_2(\emptyset, \emptyset)}
+    \\
+    \inferrule*[Right=ChordalStep]
+        {\exists u (\mathrm{Simplicial}(u, G) \land \mathrm{Chordal}_2(G - u))}
+        {\mathrm{Chordal}_2(G)}
+\end{mathpar}
+\end{definition}
+
+We can show that \Cref{def:chordal1}, and \Cref{def:chordal2} are equivalent. From now on we will call these definitions respectively $\mathrm{Chordal}_1$ and $\mathrm{Chordal}_2$. For the purpose of the subsequent proofs, we only need one side of the implication.
+
+\begin{lemma}[Implication From Chordal$_1$ to Chordal$_2$]\label{lem:chordal12}
+    Let $G = (V, E)$, if $\mathrm{Chordal}_1(G)$ then $\mathrm{Chordal}_2(G)$.
+\end{lemma}
+
+\begin{proof}
+    Because of Chordal$_1(G)$, there exists a permutation $u_1, u_2, \dots, u_n$ which is a \gls{peo} . We proceed by induction over the size of the \gls{peo}.
+
+    \medskip
+
+    \textbf{Base case:}
+    If the \gls{peo} is empty, this means that $G$ is the empty graph, because of the \textsc{ChordalEmpty} rule, Chordal$_2(G)$.
+
+    \medskip
+
+    \textbf{Inductive hypothesis:}
+    Assume that $u_n, u_{n-1}, \dots, u_2, u_1$ being a \gls{peo}, implies Chordal$_2(G)$. Now, we add the node $u_{n+1}$ into the \gls{peo}, by either adding it as a singleton or with an edge, obtaining $G'$. We must prove that, if $u_{n+1}, u_n, u_{n-1}, \dots, u_2, u_1$ is a valid \gls{peo}, then Chordal$_2(G')$ holds.
+
+    \medskip
+
+    \textbf{Inductive step:}
+    Let's take the case where $G' = G + u_{n+1}$. Assume $u_{n+1}, u_{n}, u_{n-1}, \dots, u_2, u_1$ is a valid \gls{peo}. Then, if we remove $u_{n+1}$ from the graph, because it is a singleton, it doesn't interfere with the rest of the nodes. We then know that $u_n, u_{n-1}, \dots, u_2, u_1$ is a \gls{peo}, and because of the inductive hypothesis, we know that Chordal$_2(G)$. Now, since $u_{n+1}$ is not connected to the rest of the graph, Simplicial$(u, G')$ is the case. Also, because $G = G' - u_{n+1}$, we can say that Chordal$_2(G' - u_{n+1})$. We then apply the \textsc{ChordalStep} rule, obtaining Chordal$_2(G')$.
+    Now, let's take into consideration the case where $G' = G + \{ u_{n+1}, v \}$. In particular, the case where $v \in E$ and $u_{n+1} \not \in E$. In this case, $u_{n+1}$ is not a singleton. However, it has only one neighbor, namely $v$, and so it's still simplicial. Because of that we can repeat the same procedure as before.
+\end{proof}
 
 Now, we introduce the completeness theorem for \texttt{is\_simplicialb} with respect to $\mathrm{Simplicial}$.
 
-\begin{theorem}[Completeness of \texttt{is\_simplicialb}]
+\begin{lemma}[Completeness of \texttt{is\_simplicialb}]\label{lem:sbcomp}
+Let $G = (V, E)$ and $u \in V$ such that $\mathrm{Simplicial}(u, G)$ holds, then \texttt{is\_simplicialb} returns \texttt{true}.
+\end{lemma}
 
+\begin{theorem}[Second Invariant of \texttt{eliminate\_step}]\label{cor:inv-elim-2}
+    Let $G = (V, E)$, if $\mathrm{Chordal}_1(G)$ and \texttt{eliminate\_step} does not return any node, then $G = (\emptyset, \emptyset)$.
 \end{theorem}
+\begin{proof}
+    Assume Chordal$_1(G)$ and that \texttt{eliminate\_next} does not return any node. By \Cref{lem:chordal12}, Chordal$_2(G)$. As stated in \Cref{def:chordal2}, either $G$ is the empty graph, or there exists $u$ such that $\mathrm{Simplicial(u, G)}$ and $\mathrm{Chordal}_2(G - u)$. In the second case, \Cref{lem:sbcomp} lets us derive that \texttt{is\_simplicialb} returns \texttt{true} for $u$. However, since \texttt{eliminate\_step} did not return any value, this contradicts the assumption. Because of that, the only possible case is the one where $G = (\emptyset, \emptyset)$.
+\end{proof}
