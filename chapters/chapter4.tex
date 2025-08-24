@@ -44,20 +44,19 @@ Starting again with \texttt{live\_out[ps]}, we define it as the union of the var
 \section{Register Assignment}
 \label{sec:ra}
 
-As explained in \Cref{subsec:ssara} register assignment is considered equivalent to the task of graph coloring of the interference graph, but, before starting with the coloring let's recall \Cref{def:ig}. A chordal graph is a graph for which there exists a \gls{peo}, that is, there exists a simplicial node such that, if we remove that node the graph is still chordal and, the \gls{peo} is then the ordering in which those nodes are removed.
+% As explained in \Cref{subsec:ssara} register assignment is considered equivalent to the task of graph coloring of the interference graph. Before starting with the coloring let's recall \Cref{def:ig}. A chordal graph is a graph for which there exists a \gls{peo}, that is, there exists a simplicial node such that, if we remove that node the graph is still chordal. The \gls{peo} is then the ordering in which those nodes are removed.
 To perform the coloring we then proceed this way:
+The approach we use to perform \gls{ra}~\cite{HGG:2006:RA-SSA} is the following:
 \begin{itemize}
-  \item We use the liveness information to build the interference graph;
+  \item We use the liveness information, obtained from the previous step, to build the interference graph;
   \item We iteratively remove the simplicial nodes from the interference graph obtaining a \gls{peo};
-  \item We reinsert the nodes of the \gls{peo} in \textit{reverse} order into the interference graph and, at the same time, we assign them a color that is not already taken by their (partially colored) neighborhoods;
+  \item We reinsert the nodes of the \gls{peo} in \textit{reverse} order into the interference graph. While doing that, we assign them a color that is not already taken by their neighborhoods;
 \end{itemize}
-
-We now proceed with the implementation of the steps that we just described.
 
 \subsection{Building the Interference Graph}
 
-Now that we extracted the liveness information from our \gls{cfg} we use it to build the interference graph.
-The reasoning behind the creation of the interference graph is straightforward, we go through every live set computed in the previous step, and we insert a clique containing its elements. This follows intuitively by the fact that if two variables are live in the same instruction then they interfere as per \Cref{def:ig}.
+After extracting the liveness information from our \gls{cfg}, we use it to build the interference graph.
+The reasoning behind the creation of the interference graph is straightforward. We go through every live set computed in the previous step, and we insert it as a clique in the interference graph. This follows intuitively by the fact that, if two variables are live in the same instruction, then they interfere, as stated in \Cref{def:ig}.
 
 The function used to populate the interference graph is the following:
 
@@ -73,7 +72,7 @@ Definition get_ig (pi : ProgramInfo.dict) : InterfGraph.dict :=
     InterfGraph.empty.
 \end{lstlisting}
 
-Where \texttt{ig\_insert\_instinfos} is a function that given an interference graph and a list of live sets returns a graph where a clique containing the elements of the set is added for each element of the list.
+Where \texttt{ig\_insert\_instinfos} is a function that, given an interference graph and a list of live sets, returns a graph where a clique is added for each live set of the list.
 
 \subsection{Obtaining a \glsentrylong{peo}}
 \label{subsec:peo}
@@ -218,7 +217,6 @@ We identify three different cases when performing the destruction, one for each 
 
 In \Cref{fig:destruct} we can see an example of SSA destruction in action, in the visit first we encounter an unconditional jump, then a conditional jump and finally a return instruction.
 
-
 \begin{figure}[h]
 \centering
 \begin{minipage}{0.45\textwidth}
@@ -256,7 +254,7 @@ In \Cref{fig:destruct} we can see an example of SSA destruction in action, in th
     \draw[->] (loop1) -- (end);
     \end{tikzpicture}
 \end{minipage}
-\caption{SSA destruction of a loop}
+\caption{SSA destruction of a loop.}
 \label{fig:destruct}
 \end{figure}
 

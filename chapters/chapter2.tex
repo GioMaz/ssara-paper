@@ -132,7 +132,7 @@ Now are presented with a problem, because we had to define the two variables $a_
 \centering
 \begin{minipage}{0.38\textwidth}
 \lstset{style=C}
-\begin{lstlisting}[caption={C program merging variables at line 8}, label={fig:ssabefore}]
+\begin{lstlisting}[caption={C program merging variables at line 8.}, label={fig:ssabefore}]
 int foo() {
     int a = 5;
     if (a < 10) {
@@ -147,13 +147,13 @@ int foo() {
 \hfill
 \begin{minipage}{0.58\textwidth}
   \centering
-  \caption{Same C program translated into a \gls{ssa} form representation}
+  \caption{Same C program translated into a \gls{ssa} form representation.}
   \begin{tikzpicture}[
       node distance=10mm,
       every node/.style={draw, align=left, inner sep=4pt},
       >={Stealth}
   ]
-  \node (entry)   at (0, 0)       [draw, label=above:\textbf{start}]  {$a_0 \leftarrow 5$};
+  \node (entry)   at (0, 0)       [draw, label=above:\textbf{start}]  {$a_0 \leftarrow 5$ \\ if $a_0 < 10$};
   \node (b1)      at (-1.5, -1.5) [draw, label=above:$B_1$]           {$a_1 \leftarrow a_0 + 1$};
   \node (b2)      at (1.5, -1.5)  [draw, label=above:$B_2$]           {$a_2 \leftarrow a_0 + 2$};
   \node (end)     at (0, -3)      [draw, label=above:$B_3$]             {$a_3 \leftarrow \phi(a_1, a_2)$ \\ ret $a_3$};
@@ -176,7 +176,7 @@ However, if we come from the second predecessor, we need to perform a swap of $r
 \centering
 \begin{minipage}{0.48\textwidth}
   \centering
-  \caption{\gls{ssa} basic block with multiple $\phi$-instructions}
+  \caption{\gls{ssa} basic block with multiple $\phi$-instructions.}
   \label{fig:par1}
   \begin{tikzpicture}
   \node (b1) at (-1.5, 0) [minimum height=0.8cm] {$\dots$};
@@ -190,7 +190,7 @@ However, if we come from the second predecessor, we need to perform a swap of $r
 \hfill
 \begin{minipage}{0.48\textwidth}
   \centering
-  \caption{Same basic block after \gls{ra} with three physical registers}
+  \caption{Same basic block after \gls{ra} with three physical registers.}
   \label{fig:par2}
   \begin{tikzpicture}
   \node (b1) at (-1.5, 0) [minimum height=0.8cm] {$\dots$};
@@ -241,7 +241,7 @@ We use these interferences to build the interference graph in \Cref{fig:ig2}, an
 \centering
 \begin{minipage}{0.48\textwidth}
 \lstset{style=C}
-\begin{lstlisting}[caption={C program returning $2a + 3b$}, label={fig:ig1}]
+\begin{lstlisting}[caption={C program returning $2a + 3b$.}, label={fig:ig1}]
 int foo() {
     int a = get_a();
     int b = get_b();
@@ -255,7 +255,7 @@ int foo() {
 \hfill
 \begin{minipage}{0.48\textwidth}
   \centering
-  \caption{Three-coloring of the interference graph of \Cref{fig:ig1}}
+  \caption{Three-coloring of the interference graph of \Cref{fig:ig1}.}
   \begin{tikzpicture}[scale=1, every node/.style={circle, draw, minimum size=8mm}]
     \node[fill=orange!50]    (a) at (1,1.5)  {a};
     \node[fill=purple!50] (b) at (0,0)      {b};
@@ -275,7 +275,7 @@ int foo() {
 \begin{figure}
 \label{fig:ig3}
 \lstset{style=C}
-\begin{lstlisting}[caption={Program shown in \Cref{fig:ig1} after \gls{ra}}, label={fig:ig3}]
+\begin{lstlisting}[caption={Program shown in \Cref{fig:ig1} after \gls{ra}.}, label={fig:ig3}]
 int foo() {
     int $\color{orange}{r_1}$ = get_a();
     int $\color{purple}{r_2}$ = get_b();

@@ -40,9 +40,9 @@ int foo() {
 Many compilers implement at least a basic version of \gls{ra}, while some even provide a verified implementation. For instance, the CompCert \cite{Rideau-Leroy-regalloc} compiler uses a verified checker to validate the output of its \gls{ra} algorithm, whereas CakeML \cite{10.1145/2578855.2535841} implements a fully verified linear-scan \gls{ra}. Despite the widespread use of \gls{ssa} in compilers, such as Clang and GCC, no verified implementation of \gls{ssa}-based \gls{ra} currently exists. To address this gap, we make the following contributions:
 
 \begin{itemize}
-    \item We introduce \gls{jair} (\glsentrylong{jair}), an intermediate representation in SSA form that takes into consideration the stages of the \gls{ra} pipeline, from liveness analysis to SSA destruction. In \Cref{sec:jair}, we define the syntax of \gls{jair} and discuss the feasibility of making illegal SSA-form programs unrepresentable.
+    \item We introduce \gls{jair} (\glsentrylong{jair}), an intermediate representation in SSA form that takes into consideration the stages of the \gls{ra} pipeline, from liveness analysis to SSA destruction. In \Cref{sec:jair-syntax}, we define the syntax of \gls{jair} and discuss the feasibility of making illegal SSA-form programs unrepresentable.
 
-    \item \Cref{sec:jair-int} defines the dynamic semantics of \gls{jair} as a virtual machine that simulates the execution of \gls{jair} programs;
+    \item \Cref{sec:jair-vm} defines the dynamic semantics of \gls{jair} as a virtual machine that simulates the execution of \gls{jair} programs;
 
     \item In \Cref{cha:ra}, we implement a \gls{ra} algorithm for \gls{jair} programs in Rocq;
 

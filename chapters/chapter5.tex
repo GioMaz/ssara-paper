@@ -3,6 +3,11 @@
 \chapter{Extraction}
 \label{cha:extraction}
 
+In this chapter, we put together the different components of our \gls{ra} pipeline. In \Cref{sec:pipeline}, we define the \texttt{regassign} function that does exactly that. In \Cref{sec:codegen}, we discuss the code generation. Finally, in \Cref{sec:examples}, we present some examples of translated \gls{jair} programs.
+
+\section{Composing the Pipeline}
+\label{sec:pipeline}
+
 After defining all the steps of our register assignment pipeline, we extract them into OCaml.
 In particular, we extract the following functions:
 \begin{itemize}
@@ -34,6 +39,9 @@ let regassign irvreg_program =
 
 This function accepts a program written in \gls{jair} and returns an equivalent program without $\phi$-instructions and using only x86-64 registers.
 Note that, at line 8, we panic if we are not able to perform the coloring due to a high number of variables, this check is mandatory, as we do not perform spilling.
+
+\section{Code Generation}
+\label{sec:codegen}
 
 After obtaining the converted data structure, the generation of assembly code is straightforward. We simply perform a depth-first visit on the \gls{cfg} and generate the assembly code for each basic block.
 In our implementation, we chose to emit assembly with the \gls{nasm} syntax.
@@ -82,41 +90,48 @@ let gen_irpreg_program out program =
 
 At line 14 we generate the label of the current block, using the \texttt{gen\_label} function. Then, at line 17 we generate the body of instructions of the basic block. Finally, at line 20, we generate the jump instruction. We continue with the recursion until we either reach a \texttt{Ret} instruction or we encounter an already visited block.
 
-It is important to note, that our language is a three-address code representation. While \gls{nasm} only allows instructions that have a maximum of two arguments. Because of that, translation of binary operations must be treated specially.
+It is important to note, that \gls{jair} is a three-address code representation. While \gls{nasm} only allows instructions that have a maximum of two arguments. Because of that, translation of binary operations must be treated specially.
 Given physical registers \texttt A \texttt B, and \texttt C, we identify all the possible cases of a binary, non-commutative operation:
-\lstset{style=Rocq}
-\begin{enumerate}
-  \item \label{itm:i1} \lstinline{Definition i1 : inst := r(A) <- r(A) / r(A).}
-  \item \label{itm:i2} \lstinline{Definition i2 : inst := r(A) <- r(A) / r(B).}
-  \item \label{itm:i3} \lstinline{Definition i3 : inst := r(A) <- r(B) / r(A).}
-  \item \label{itm:i4} \lstinline{Definition i4 : inst := r(A) <- r(B) / r(B).}
-  \item \label{itm:i5} \lstinline{Definition i5 : inst := r(A) <- r(B) / r(C).}
-\end{enumerate}
+\begin{lstlisting}[style=Rocq]
+Definition i1 : inst := r(A) <- r(A) / r(A).
+Definition i2 : inst := r(A) <- r(A) / r(B).
+Definition i3 : inst := r(A) <- r(B) / r(A).
+Definition i4 : inst := r(A) <- r(B) / r(B).
+Definition i5 : inst := r(A) <- r(B) / r(C).
+\end{lstlisting}
+
+% \begin{enumerate}
+%   \item \label{itm:i1} \lstinline{Definition i1 : inst := r(A) <- r(A) / r(A).}
+%   \item \label{itm:i2} \lstinline{Definition i2 : inst := r(A) <- r(A) / r(B).}
+%   \item \label{itm:i3} \lstinline{Definition i3 : inst := r(A) <- r(B) / r(A).}
+%   \item \label{itm:i4} \lstinline{Definition i4 : inst := r(A) <- r(B) / r(B).}
+%   \item \label{itm:i5} \lstinline{Definition i5 : inst := r(A) <- r(B) / r(C).}
+% \end{enumerate}
 
 \lstset{style=NASM}
-In \Cref{itm:i1}, a \gls{nasm} translation is straightforward, we can, in fact, use \lstinline{idiv A A}. The same goes for \Cref{itm:i2}, where we can use \lstinline{idiv A B}. However, in \Cref{itm:i3}, we can clearly see that no single \gls{nasm} instruction can perform the intended operation. In particular, if we translate the operation as \lstinline{idiv A B}, we obtain an incorrect result, as division is non-commutative. Whereas, if we translate it as \lstinline{idiv B A}, the result will be written to register \texttt B, which is not the intended destination. For this case we use the following approach:
+In instruction \texttt{i1}, a \gls{nasm} translation is straightforward, we can, in fact, use \lstinline{idiv A A}. The same goes for \texttt{i2}, where we can use \lstinline{idiv A B}. However, in \texttt{i3}, we see that no singular \gls{nasm} instruction can perform the intended operation. In particular, if we translate the operation as \lstinline{idiv A B}, we obtain an incorrect result, as division is non-commutative. Whereas, if we translate it as \lstinline{idiv B A}, the result will be written to register \texttt B, which is not the intended destination. For this case we use the following approach:
 
 \begin{lstlisting}[style=NASM]
 mov tmp A
 mov A B
-div A tmp
+idiv A tmp
 \end{lstlisting}
 
 At line 1, we move the value of \texttt A into a temporary. At line 2, we move the content of \texttt B into the target register \texttt A. Finally, at line 3, we divide \texttt A (containing the initial value of \texttt B) by \texttt{tmp} (containing the initial value of \texttt A).
 It is important to note that register \texttt{tmp} is only used inside \texttt{Point1} and \texttt{Point2} blocks. Because of that, there is no risk of colliding with a previous usage of that register.
 
-Now, even \Cref{itm:i4} requires multiple instructions, as a literal translation would still overwrite the content of \texttt B. We solve it this way, with two instruction:
+Now, even \texttt{i4} requires multiple \gls{nasm} instructions, as a literal translation would still overwrite the content of \texttt B. We solve it this way, with two instruction:
 
 \begin{lstlisting}
 mov A B
-div A B
+idiv A B
 \end{lstlisting}
 
-The same goes for \Cref{itm:i5}, which can be translated into:
+The same goes for \texttt{i5}, which can be translated into:
 
 \begin{lstlisting}
 mov A B
-div A C
+idiv A C
 \end{lstlisting}
 
 In the previous examples, we used the division operator, which is binary and non-commutative. This is arguably the hardest case we could encounter, as for unary operators and load/store instructions, \gls{nasm} translation is straightforward.
@@ -152,42 +167,206 @@ let gen_3ac_2ac out opcode r r' v =
 ;;
 \end{lstlisting}
 
-At line 2, we handle cases where the destination register is the same as the first operand. This translates directly into a \gls{nasm} instruction. At line 8, we handle the case where the second operand is an immediate value. Here, we just need to move the first operand into the destination register, and then perform the operation. At line 14, we implement the cases we discussed previously. Expect for \Cref{itm:i1} and \Cref{itm:i2}, which are handled together with the other instructions at line 2. Finally, at line 24, we handle the case where the second operand is a pointer. Since pointers are also immediate values, we emit the same instructions as the first branch of the match.
+At line 2, we handle cases where the destination register is the same as the first operand. This translates directly into a \gls{nasm} instruction. At line 8, we handle the case where the second operand is an integer immediate value. Here, we just need to move the first operand into the destination register, and then perform the operation. At line 14, we implement the cases we discussed previously. Expect for \texttt{i1} and \texttt{i2}, which are handled together with the other instructions at line 2. Finally, at line 24, we handle the case where the second operand is a pointer. Since pointers are also immediate values, we emit the same instructions as the first branch of the match.
 
+\section{Examples}
+\label{sec:examples}
+
+Here we present some \gls{jair} programs and their compiled version. We also include their return values, respectively on the \gls{jair} interpreter, and on x86-64 hardware.
+
+% /-----------+
+% | EXAMPLE 1 |
+% +-----------/
 \begin{figure}[ht]
+\begin{minipage}{0.68\linewidth}
+\centering
+\begin{lstlisting}[style=Rocq]
+Definition b3 : block :=
+  Block (Normal 3) [] [] (ret r(5)).
+
+CoFixpoint b2 : block :=
+  Block (Normal 2) [
+    (* Iterator *)
+    r(2) <- phi [(0, Normal 1); (4, Normal 2)];
+    (* Accumulator *)
+    r(3) <- phi [(1, Normal 1); (5, Normal 2)]
+  ] [
+    r(4) <- r(2) - i(1);
+    r(5) <- r(3) * r(4)
+  ] (
+    if r(4) <= i(1)
+    then b3
+    else b2
+  ).
+
+Definition b1 : block :=
+  Block (Normal 1) [] [
+    r(0) <- i(5);   (* Iterator *)
+    r(1) <- r(0)    (* Accumulator *)
+  ] (Jump b2).
+\end{lstlisting}
+\end{minipage}
+\hfill
+\begin{minipage}{0.28\linewidth}
+\centering
 \begin{lstlisting}[style=NASM]
 section .text
 global _start
 _start:
-	jmp	L1
+  jmp L1
 L1:
-	mov	rdx,	0
-	mov	rcx,	1
-	mov	rbx,	12
-	mov	rax,	rdx
-	mov	rdx,	rcx
-	mov	rcx,	rax
-	jmp	L2
+  mov rcx,  5
+  mov rbx,  rcx
+  jmp L2
 L2:
-	mov	rax,	rdx
-	add	rax,	rcx
-	mov	rcx,	rax
-	sub	rbx,	1
-	cmp	rbx,	1
-	je	L2.1
-	jmp	L2.2
+  sub rcx,  1
+  imul  rbx,  rcx
+  cmp rcx,  1
+  jle L2.1
+  jmp L2.2
 L2.1:
-	jmp	L3
+  jmp L3
 L3:
-	mov	rax,	60
-	mov	rdi,	rcx
-	syscall
+  mov rax,  60
+  mov rdi,  rbx
+  syscall
 L2.2:
-	mov	rax,	rdx
-	mov	rdx,	rcx
-	mov	rcx,	rax
-	jmp	L2
+  jmp L2
 \end{lstlisting}
-\caption{Assembly translation of the Fibonacci function}
-\label{fig:example-nasm}
+\end{minipage}
+\caption{Translation of a program that computes the factorial of 5, both the \gls{jair} program and the \gls{nasm} program return 120.}
+\end{figure}
+
+% /-----------+
+% | EXAMPLE 2 |
+% +-----------/
+\begin{figure}[ht]
+\begin{minipage}{0.68\linewidth}
+\centering
+\begin{lstlisting}[style=Rocq]
+Definition b3 :=
+  Block (Normal 3) [] []
+    (ret r(3)).
+
+CoFixpoint b2 :=
+  Block (Normal 2) [
+    r(2) <- phi [(0, Normal 1); (3, Normal 2)]
+  ] [
+    r(3) <- r(2) + i(3)
+  ] (
+    if r(3) < r(1)
+    then b2
+    else b3
+  ).
+
+Definition b1 :=
+  Block (Normal 1) [] [
+    r(0) <- i(0);
+    r(1) <- i(20)
+  ] (Jump b2).
+\end{lstlisting}
+\end{minipage}
+\hfill
+\begin{minipage}{0.28\linewidth}
+\centering
+\begin{lstlisting}[style=NASM]
+section .text
+global _start
+_start:
+  jmp  L1
+L1:
+  mov rbx,  0
+  mov rcx,  20
+  jmp L2
+L2:
+  add rbx,  3
+  cmp rbx,  rcx
+  jl  L2.1
+  jmp L2.2
+L2.1:
+  jmp L2
+L2.2:
+  jmp L3
+L3:
+  mov rax,  60
+  mov rdi,  rbx
+  syscall
+\end{lstlisting}
+\end{minipage}
+\caption{Translation of a program that increments a counter up to 21, both the \gls{jair} program and the \gls{nasm} program return 21.}
+\end{figure}
+
+% /-----------+
+% | EXAMPLE 3 |
+% +-----------/
+\begin{figure}[ht]
+\begin{minipage}{0.68\linewidth}
+\centering
+\begin{lstlisting}[style=Rocq]
+Definition b3 : block :=
+  Block (Normal 3) [] [] (ret r(6)).
+
+CoFixpoint b2 : block :=
+  Block (Normal 2) [
+    r(3) <-
+      phi [(0, Normal 1); (4, Normal 2)];
+    r(4) <-
+      phi [(1, Normal 1); (6, Normal 2)];
+    r(5) <-
+      phi [(2, Normal 1); (7, Normal 2)]
+  ] [
+    r(6) <- r(4) + r(3);  (* New first temp *)
+    r(7) <- r(5) - i(1)   (* New iterator *)
+  ] (
+    if r(7) = i(1)
+    then b3
+    else b2
+  ).
+
+Definition b1 : block :=
+  Block (Normal 1) [] [
+    r(0) <- i(0);  (* Second temp *)
+    r(1) <- i(1);  (* First temp *)
+    r(2) <- i(12)  (* Iterator*)
+  ] (Jump b2).
+\end{lstlisting}
+\end{minipage}
+\hfill
+\begin{minipage}{0.28\linewidth}
+\centering
+\begin{lstlisting}[style=NASM]
+section .text
+global _start
+_start:
+  jmp L1
+L1:
+  mov rdx,  0
+  mov rcx,  1
+  mov rbx,  12
+  mov rax,  rdx
+  mov rdx,  rcx
+  mov rcx,  rax
+  jmp L2
+L2:
+  mov rax,  rdx
+  add rax,  rcx
+  mov rcx,  rax
+  sub rbx,  1
+  cmp rbx,  1
+  je  L2.1
+  jmp L2.2
+L2.1:
+  jmp L3
+L3:
+  mov rax,  60
+  mov rdi,  rcx
+  syscall
+L2.2:
+  mov rax,  rdx
+  mov rdx,  rcx
+  mov rcx,  rax
+  jmp L2
+\end{lstlisting}
+\end{minipage}
+\caption{Translation of the Fibonacci of 12, both the \gls{jair} program and the \gls{nasm} program return 144.}
 \end{figure}
