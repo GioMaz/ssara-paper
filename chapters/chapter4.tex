@@ -46,7 +46,7 @@ Starting again with \texttt{live\_out[ps]}, we define it as the union of the var
 
 % As explained in \Cref{subsec:ssara} register assignment is considered equivalent to the task of graph coloring of the interference graph. Before starting with the coloring let's recall \Cref{def:ig}. A chordal graph is a graph for which there exists a \gls{peo}, that is, there exists a simplicial node such that, if we remove that node the graph is still chordal. The \gls{peo} is then the ordering in which those nodes are removed.
 
-The approach we use to perform \gls{ra}~\cite{HGG:2006:RA-SSA} is the following:
+In order to perform \gls{ra} we use the approach presented by Hack-Grund-Goos~\cite{HGG:2006:RA-SSA}:
 \begin{itemize}
   \item We use the liveness information, obtained from the previous step, to build the interference graph;
   \item We iteratively remove the simplicial nodes from the interference graph obtaining a \gls{peo};
@@ -72,7 +72,7 @@ Definition get_ig (pi : ProgramInfo.dict) : InterfGraph.dict :=
     InterfGraph.empty.
 \end{lstlisting}
 
-At line 5, we use \texttt{ig\_insert\_instinfos}. This function, given an interference graph and a list of live sets, returns a graph where a clique is added for each live set of the list.
+At line 5, we call \texttt{ig\_insert\_instinfos}. This function, given an interference graph and a list of live sets, returns a graph where a clique is added for each live set of the list.
 
 \subsection{Obtaining a \glsentrylong{peo}}
 \label{subsec:peo}
@@ -81,12 +81,11 @@ Recalling \Cref{def:simplicial} we implement a function that determines whether 
 
 \begin{lstlisting}[style=Rocq]
 Definition is_simplicialb (g : InterfGraph.dict) (r : reg) : bool :=
-  let nbors := InterfGraph.get g r in
   regs_mem r (InterfGraph.keys g) &&
-  is_cliqueb g nbors.
+  is_cliqueb g (InterfGraph.get g r ).
 \end{lstlisting}
 
-At line 2, we get the neighborhood of \texttt r using \texttt{InterfGraph.get}. At line 3, we check that \texttt r is actually part of the graph. Finally, at line 4, we check whether the neighborhood of \texttt r is a clique, using \texttt{is\_cliqueb}.
+At line 2, we check that \texttt r is actually part of the graph using \texttt{regs\_mem}. At line 4, we check whether the neighborhood of \texttt r is a clique, using \texttt{is\_cliqueb}.
 We now define a function that lets us find any simplicial node in a graph:
 
 \begin{lstlisting}[style=Rocq]
@@ -94,10 +93,10 @@ Definition find_next (g : InterfGraph.dict) : option reg :=
   find (is_simplicialb g) (InterfGraph.keys g).
 \end{lstlisting}
 
-Here, we find the first node of the graph that respects the \texttt{(is\_simplicialb g)} condition. Note that the output node is an optional value, since the function may also receive a non-chordal graph which may not have a simplicial node. Because of that we need to propagate the option wrapper to all the return values of the subsequent functions.
+Here, we find the first node of the graph that respects the \texttt{(is\_simplicialb g)} condition. Note that the output node is an optional value, since the function may also receive a non-chordal graph which may not have a simplicial node. Because of that, we need to propagate the option wrapper to all the return values of the subsequent functions.
 As we will see in \Cref{cha:extraction}, upon receiving a \texttt{None} constructor we will to throw an exception, signaling to the user that the interference graph (and likely even the initial \gls{jair} program) is ill-formed.
 
-Now we proceed with the step function for the \texttt{eliminate} function:
+Now we define one step of the \texttt{eliminate} function, namely \texttt{eliminate\_step}:
 
 \begin{lstlisting}[style=Rocq]
 Definition eliminate_step
@@ -110,7 +109,7 @@ Definition eliminate_step
 \end{lstlisting}
 
 This function takes an interference graph which is chordal, finds a simplicial node, removes it, and returns both the removed node and the resulting graph.
-Note that, because of \Cref{def:chordal}, if the input graph is chordal, then the function will never return the \texttt{None} constructor. Furthermore, the resulting graph will also be chordal.
+Note that, as we will prove in \Cref{cha:verification}, if the input graph is chordal and non-empty the function will never return the \texttt{None} constructor. Furthermore, the resulting graph will also be chordal.
 
 Now we define the \texttt{eliminate} function, that is, the function for obtaining a \gls{peo}:
 
@@ -136,11 +135,11 @@ The intuition behind the coloring algorithm is the following, first we make the 
   \item The chromatic number $\omega(G)$ is less than or equal to the number of available registers $k$, that is, we assume that spilling already happened, making the graph $k$-colorable;
 \end{itemize}
 
-Now take into consideration a single iteration of the algorithm mentioned at the beginning of \Cref{sec:ra}. The node we are about to color is simplicial, meaning that its neighborhood forms a clique. Even if not every element of the neighborhood is colored, the colored neighbors still form a clique (a subset of a clique is still a clique) meaning that the next step consists in finding a color that is not used by the colored neighbors, which is always possible since we assume that $\omega(G) \leq k$.
+Now take into consideration a single iteration of the algorithm mentioned at the beginning of \Cref{sec:ra}. The node we are about to color is simplicial. This means that its neighborhood forms a clique. Even if not every element of the neighborhood is colored, the colored neighbors still form a clique (a subset of a clique is still a clique). The next step consists in finding a color that is not used by the colored neighbors, which is always possible since we assume that $\omega(G) \leq k$.
 
-Given the intuition behind the algorithm, we start with the definition of the \texttt{Coloring} object as a dictionary from virtual registers to physical registers, this object will be the output of the coloring phase.
+Given the intuition behind the algorithm, we start with the definition of the \texttt{Coloring} object. This is a dictionary from virtual registers to physical registers and will be the output of the coloring phase.
 
-As we mentioned before, at each position of the \textit{reversed} \gls{peo} we find a node whose colored neighborhood forms a clique, because of that, in order to assign this node a new color we pick a random one from the complement of the neighborhood colors. We define a function specifically for this purpose.
+As we mentioned before, at each position of the \textit{reversed} \gls{peo} we find a node whose colored neighborhood forms a clique. Because of that, in order to assign this node a new color we pick a random one from the complement of the neighborhood colors. We define a function specifically for this purpose.
 
 \begin{lstlisting}[style=Rocq]
 Definition preg_compl (colors : set preg) : option preg :=
@@ -150,9 +149,9 @@ Definition preg_compl (colors : set preg) : option preg :=
   end.
 \end{lstlisting}
 
-Here, given a set of registers we calculate the difference with the set of registers \texttt{preg\_allowed}, and we extract an arbitrary element from it, note that the result of this function is optional since, if we run out of registers, we are not able to extract from the complement and ultimately perform register assignment. This, however, is an unexpected case solved by spilling.
+Here, given a set of registers we calculate its difference with the set of registers in \texttt{preg\_allowed}. The variable \texttt{preg\_allowed} contains the registers that can be used during the coloring. Note that the result of this function is optional since, if we run out of registers, we are not able to extract from the complement and ultimately perform register assignment. This, however, is an unexpected case, which can be solved by spilling.
 
-Now we use the function we just defined to color a single node given its interference graph and the current coloring:
+Now we use the function we just defined to find the color of a node given its interference graph and the current coloring:
 
 \begin{lstlisting}[style=Rocq]
 Definition get_color
@@ -163,55 +162,107 @@ Definition get_color
   preg_compl used.
 \end{lstlisting}
 
-Finally, we introduce the function to obtain the complete coloring of the interference graph, the procedure is the same as explained at the beginning of \Cref{subsec:coloring}.
+At line 4, we get the neighborhood of the node. At line 5, we map each neighbor to its assigned color and, at line 6, we obtain an unused color.
+
+We introduce the function to obtain the complete coloring of the interference graph, the procedure is the same as explained at the beginning of \Cref{subsec:coloring}.
+
+\begin{lstlisting}[style=Rocq]
+Fixpoint get_coloring_aux
+  (peo : list IRVreg.reg) (g : InterfGraph.dict) (c : Coloring.dict)
+  : option Coloring.dict :=
+  match peo with
+  | nil => Some c
+  | v :: peo =>
+    match get_color v g c with
+    | Some p => get_coloring_aux peo g (Coloring.update c v p)
+    | None => None
+    end
+  end.
+\end{lstlisting}
+
+At line 6, we get the head of the \gls{peo}. We get an unused color with the \texttt{get\_color} function. If a color is found, we proceed with a recursive call on the rest of the \gls{peo}. Otherwise, we return the \texttt{None} constructor.
+The \texttt{get\_coloring\_aux} function needs initialization. Specifically, it needs to receive a reversed \gls{peo}, and an empty coloring to start with. We define its initialization parameters in the wrapper \texttt{get\_coloring}.
 
 \begin{lstlisting}[style=Rocq]
 Definition get_coloring (peo : list IRVreg.reg) (g : InterfGraph.dict)
   : option Coloring.dict :=
-  let fix get_coloring_aux (peo : list IRVreg.reg) (c : Coloring.dict)
-    : option Coloring.dict :=
-    match peo with
-    | nil => Some c
-    | v :: peo =>
-      match get_color v g c with
-      | Some p =>
-        let c := Coloring.update c v p in
-        get_coloring_aux peo c
-      | None => None
-      end
-    end
-  in
-  get_coloring_aux (rev peo) Coloring.empty.
+  get_coloring_aux (rev peo) g Coloring.empty
+.
 \end{lstlisting}
 
 \section{SSA Destruction}
 \label{sec:destruct}
 
-The final phase before emitting assembly is SSA destruction, which consists in the translation of $\phi$-instructions into moves. This final phase is required since $\phi$-instructions are not implemented in common architectures.
-We mentioned in \Cref{subsec:phi} that a section of $\phi$-instructions behaves as a parallel copy, our goal is to find a sequence of instruction that preserves this property. The translation is straightforward for some cases, take the following example, where $x \to y$ represents moving the content of register $x$ to register $y$:
-\[
-  r_1 \to r_2, r_2 \to r_3, r_3 \to r_4
-\]
-Solving this problem basically consists in reordering the moves so that no value is overwritten, the solution for this case is:
-\[
-  r_3 \to r_4, r_2 \to r_3, r_1 \to r_2
-\]
-Unfortunately some other cases are non-trivial, namely those who contain loops such as:
-\[
-  r_1 \to r_2, r_2 \to r_3, r_3 \to r_1
-\]
-There are two ways of solving these cases, we could try to find a sequence of swap operations such that at the end of the computation each value ends up in the intended register, this first option could be implemented using a swap instruction (like \texttt{xchg}) if supported by the architecture, or by using the XOR operator. Another option would be to reserve a special register \texttt{tmp} to perform the swaps. In our implementation we use an already verified algorithm~\cite{Rideau-Serpette-Leroy-parmov} that uses temporary variables. Given the previous example we would end up with the following result:
-\[
-  r_1 \to \texttt{tmp}, r_3 \to r_1, r_2 \to r_3, \texttt{tmp} \to r_2
-\]
-Now that we are able to compile a parallel move we visit the \gls{cfg} while translating one section of $\phi$-instructions at a time.
-We identify three different cases when performing the destruction, one for each jump instruction:
-\begin{itemize}
-  \item When visiting a basic block that ends with a \texttt{CondJump} we need to translate two different parallel moves, one for each of the two successors, since we cannot append two different parallel move translations into the current block, as they would conflict with each other, we need to create two new basic blocks, each of which contains the corresponding translation of the parallel move and then an unconditional jump to the successor. We also give them the same label as the current block but, this time, we use constructors \texttt{Point1} and \texttt{Point2} to avoid a collision with the current block, which uses the \texttt{Normal} constructor;
-  \item If instead we encounter a jump instruction, the translation simply consists in appending the translated parallel move at the end of the instructions of the current block;
-  \item Finally the return instruction does not require any translation, as it is the last instruction of a program;
-\end{itemize}
+The final phase before emitting assembly is SSA destruction. This step consists in the translation of $\phi$-instructions into register copies. This is required since $\phi$-instructions are not implemented in common hardware architectures.
+To convert each sequence of $\phi$-instructions, we use the algorithm proposed by Rideau-Leroy~\cite{Rideau-Leroy-regalloc}, implemented in the \texttt{pmove} function. This function has signature \texttt{moves $\to$ moves}, where \texttt{moves} is a list of pairs of registers \texttt r and \texttt{r'}, respectively the sources and destinations of the copy.
+Because we don't introduce a proof of termination for the algorithm, we pass \texttt{fuel} as an argument of the subsequent functions.
 
+We then define \texttt{succ\_to\_insts}. This function takes the current block label, a successor block and \texttt{fuel}. Then, it returns a sequence of register semantically equivalent to the ones specified by the $\phi$-instructions of the successor.
+
+\begin{lstlisting}[style=Rocq]
+Definition succ_to_insts (curr : lbl) (succ : block) (fuel : nat)
+  : list inst :=
+  let ms := phis_to_moves curr (get_phis succ) in
+  let ms := pmove ms fuel in
+  moves_to_insts ms.
+\end{lstlisting}
+
+Here, at line 3, we convert the $\phi$-instructions of the successor into simple moves. At line 4, we apply the translation algorithm passing the \texttt{fuel} parameter and the moves we just computed. At the end of the function, we return the moves as \gls{jair} instructions.
+The following, is the function for performing \gls{ssa} destruction of the \gls{cfg}.
+
+\begin{lstlisting}[style=Rocq]
+Definition ssa_destruct (fuel : nat) (b : block) :=
+  let cofix ssa_destruct_aux (curr: lbl) (b : block) : block :=
+    match b with
+    | Block l ps is j =>
+      match j with
+      | CondJump c r v b1 b2 =>
+        Block l [] is (CondJump c r v
+          (Block
+            (Point1 (nat_of_lbl l)) [] (succ_to_insts l b1 fuel)
+            (Jump (ssa_destruct_aux l b1)))
+          (Block (Point2 (nat_of_lbl l)) [] (succ_to_insts l b2 fuel)
+            (Jump (ssa_destruct_aux l b2))))
+      | Jump b' =>
+        Block l [] (is ++ (succ_to_insts l b' fuel))
+          (Jump (ssa_destruct_aux l b'))
+      | Ret r =>
+        Block l [] is (Ret r)
+      end
+    end
+  in
+  ssa_destruct_aux (get_lbl b) b.
+\end{lstlisting}
+
+We identify three different cases when performing the destruction, one for each constructor of the jump instruction. At line 6, we handle the case of a \texttt{CondJump}. Here, we need to translate two different parallel moves, one for each of the two successors. In this case, we cannot append the two different parallel move translations at the end of the current block. If we did, they would conflict with each other. Because of that, we need to create two new basic blocks, namely \texttt{(Point1 l)} and \texttt{(Point2 l)}. Where \texttt l is the label of the current block. Each of the two new blocks contain the result of \texttt{succ\_to\_insts} and a jump instruction to the successor.
+
+The second case, at line 13, is the unconditional \texttt{Jump}. The translation simply consists in appending the result of \texttt{succ\_to\_insts} at the end of the instructions of the current block. Maintaining the unconditional jump at the end of the block.
+
+The last case, at line 14, handles the \texttt{Ret} instruction. This case does not require any translation, as it is the last instruction of a program.
+
+
+% We mentioned in \Cref{sec:ssa} that a sequence of $\phi$-instructions behaves as a parallel copy, our goal is to find a sequence of register instruction that preserves this property. The translation is straightforward for some cases, take the following example, where $x \to y$ represents moving the content of register $x$ to register $y$:
+% \[
+%   r_1 \to r_2, r_2 \to r_3, r_3 \to r_4
+% \]
+% Solving this problem basically consists in reordering the moves so that no value is overwritten, the solution for this case is:
+% \[
+%   r_3 \to r_4, r_2 \to r_3, r_1 \to r_2
+% \]
+% Unfortunately some other cases are non-trivial, namely those who contain loops such as:
+% \[
+%   r_1 \to r_2, r_2 \to r_3, r_3 \to r_1
+% \]
+% There are two ways of solving these cases, we could try to find a sequence of swap operations such that at the end of the computation each value ends up in the intended register, this first option could be implemented using a swap instruction (like \texttt{xchg}) if supported by the architecture, or by using the XOR operator. Another option would be to reserve a special register \texttt{tmp} to perform the swaps. In our implementation we use an already verified algorithm~\cite{Rideau-Serpette-Leroy-parmov} that uses temporary variables. Given the previous example we would end up with the following result:
+% \[
+%   r_1 \to \texttt{tmp}, r_3 \to r_1, r_2 \to r_3, \texttt{tmp} \to r_2
+% \]
+% Now that we are able to compile a parallel move we visit the \gls{cfg} while translating one section of $\phi$-instructions at a time.
+
+
+
+
+%TODO: MOVE THIS IN BACKGROUND
 In \Cref{fig:destruct} we can see an example of SSA destruction in action, in the visit first we encounter an unconditional jump, then a conditional jump and finally a return instruction.
 
 \begin{figure}[h]
@@ -254,5 +305,3 @@ In \Cref{fig:destruct} we can see an example of SSA destruction in action, in th
 \caption{SSA destruction of a loop.}
 \label{fig:destruct}
 \end{figure}
-
-\todo{Add description of registers implementation either in \Cref{sec:jair} or \Cref{cha:verification}}

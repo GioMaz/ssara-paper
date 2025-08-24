@@ -44,6 +44,16 @@ Inductive preg : Type :=
 \end{lstlisting}
 
 We also include the \texttt{UNASSIGNED} register, which is used as a default value for the coloring. We explain the purpose of this register in \Cref{sec:ra}. Moreover, we will prove that the coloring function will never return this constructor, in \Cref{cha:verification}.
+Along with the physical register type, we introduce some global definitions for special registers.
+
+\begin{lstlisting}[style=Rocq]
+Definition tmp : preg := RAX.
+Definition rsp : preg := RSP.
+Definition rbp : preg := RBP.
+\end{lstlisting}
+
+At line 1, we define \texttt{tmp}, this register is used by the \gls{ssa} destruction algorithm to perform register swaps. At lines 2 and 3, we define respectively \texttt{rsp} and \texttt{rbp}. These two registers are special as they contain values required to interact with the stack.
+Registers \texttt{tmp}, \texttt{rsp}, and \texttt{rbp} must not be overwritten by user variables. Because of that, we exclude them from the pool of registers during \gls{ra}. This pool of registers is defined as \texttt{preg\_allowed}, and it contains every register except for the three we just mentioned and \texttt{UNASSIGNED}.
 
 \subsection{Labels}
 
@@ -70,7 +80,7 @@ In order to perform computations, \gls{jair} provides arithmetic and logical ins
 We define the \texttt{val} type which represents an operand of these instructions. It can either be an integer, a register, or a pointer to a memory location (represented as a natural number). The following is the \gls{bnf} definition of the value type, along with its type definition:
 
 \begin{align*}
-\nt{value} ::= i( \mathbb Z ) \mid r( \text{register} ) \mid p( \mathbb N )
+\nt{value} ::= i( \mathbb Z ) \mid r( \nt{register} ) \mid p( \mathbb N )
 \end{align*}
 
 \begin{lstlisting}[style=Rocq]
@@ -86,10 +96,10 @@ We define the syntax of expressions:
 \begin{align*}
 \nt{expression} &::= \nt{value} \\
 &\mid \text{load} \nt{value} \\
-&\mid r( \nt{register}) + \nt{value} \\
-&\mid r( \nt{register}) - \nt{value} \\
-&\mid r( \nt{register}) * \nt{value} \\
-&\mid r( \nt{register}) / \nt{value} \\
+&\mid r( \nt{register} ) + \nt{value} \\
+&\mid r( \nt{register} ) - \nt{value} \\
+&\mid r( \nt{register} ) * \nt{value} \\
+&\mid r( \nt{register} ) / \nt{value} \\
 \end{align*}
 \end{minipage}
 \hfill
@@ -178,12 +188,12 @@ Before defining the syntax of a jump instruction, we introduce the conditional o
 
 \begin{minipage}{0.45\linewidth}
 \begin{align*}
-\nt{condition} &::= r(\text{register}) = \nt{val} \\
-&\mid r(\text{register}) \neq \nt{val} \\
-&\mid r(\text{register}) < \nt{val} \\
-&\mid r(\text{register}) \leq \nt{val} \\
-&\mid r(\text{register}) > \nt{val} \\
-&\mid r(\text{register}) \geq \nt{val} \\
+\nt{condition} &::= r(\nt{register}) = \nt{val} \\
+&\mid r(\nt{register}) \neq \nt{val} \\
+&\mid r(\nt{register}) < \nt{val} \\
+&\mid r(\nt{register}) \leq \nt{val} \\
+&\mid r(\nt{register}) > \nt{val} \\
+&\mid r(\nt{register}) \geq \nt{val} \\
 \end{align*}
 \end{minipage}
 \hfill
@@ -232,83 +242,66 @@ Definition program : Type := block.
 
 Where the starting point is the first block we encounter during a visit of \texttt{program}, and the set of blocks of the \gls{cfg} is the set of blocks reachable from the starting point.
 
-Now that we covere the \gls{jair} implementation, we demonstrate its capabilities in \Cref{fig:example-jair} with an example of the Fibonacci function along with the same example in a \gls{ssa} form representation.
+Now that we cover the \gls{jair} implementation, we demonstrate its capabilities in \Cref{fig:example-jair} with an example of the Fibonacci function along with the same example in a \gls{ssa} form representation.
 
 \begin{figure}[ht]
 \centering
-% \begin{minipage}{0.65\textwidth}
-\begin{minipage}{0.45\textwidth}
+\begin{minipage}{0.65\textwidth}
+% \begin{minipage}{0.45\textwidth}
 
-\[
-\renewcommand{\arraystretch}{1}
-\begin{array}{l}
-B_1 := \text{Block (Normal 1) } [] \ [ \\
-\quad r(0) \leftarrow i(0); \\
-\quad r(1) \leftarrow i(1); \\
-\quad r(2) \leftarrow i(12); \\
-] \ (\text{jump } B_2) \\
-\\
-B_2 := \text{Block (Normal 2) } [ \\
-\quad r(3) \leftarrow \phi[(0, \ \text{Normal 1}); \ (4, \ \text{Normal 2})] \\
-\quad r(4) \leftarrow \phi[(1, \ \text{Normal 1}); \ (6, \ \text{Normal 2})] \\
-\quad r(5) \leftarrow \phi[(2, \ \text{Normal 1}); \ (7, \ \text{Normal 2})] \\
-] \ [ \\
-\quad r(6) \leftarrow r(4) + r(3); \\
-\quad r(7) \leftarrow r(5) - i(1); \\
-] \ (\text{if } r(7) = i(1) \text{ then } B_3 \text{ else } B_2) \\
-\\
-B_3 := \text{Block (Normal 3) } [] \ [] \ (\text{ret } r(6)) \\
-\end{array}
-\]
+% \[
+% \renewcommand{\arraystretch}{1}
+% \begin{array}{l}
+% B_1 := \text{Block (Normal 1) } [] \ [ \\
+% \quad r(0) \leftarrow i(0); \\
+% \quad r(1) \leftarrow i(1); \\
+% \quad r(2) \leftarrow i(12); \\
+% ] \ (\text{jump } B_2) \\
+% \\
+% B_2 := \text{Block (Normal 2) } [ \\
+% \quad r(3) \leftarrow \phi[(0, \ \text{Normal 1}); \ (4, \ \text{Normal 2})] \\
+% \quad r(4) \leftarrow \phi[(1, \ \text{Normal 1}); \ (6, \ \text{Normal 2})] \\
+% \quad r(5) \leftarrow \phi[(2, \ \text{Normal 1}); \ (7, \ \text{Normal 2})] \\
+% ] \ [ \\
+% \quad r(6) \leftarrow r(4) + r(3); \\
+% \quad r(7) \leftarrow r(5) - i(1); \\
+% ] \ (\text{if } r(7) = i(1) \text{ then } B_3 \text{ else } B_2) \\
+% \\
+% B_3 := \text{Block (Normal 3) } [] \ [] \ (\text{ret } r(6)) \\
+% \end{array}
+% \]
 
-% $B_1 :=$ Block (Normal 1) $[]$ $[$ \\
-%   $r(0) \leftarrow i(0);$ \\
-%   $r(1) \leftarrow i(1);$ \\
-%   $r(2) \leftarrow i(12);$ \\
-% $]$ (jump $B_2$) \\
+\begin{lstlisting}[style=Rocq]
+Definition b3 : block :=
+  Block (Normal 3) [] [] (ret r(6)).
 
-% $B_2 :=$ Block (Normal 2) $[$ \\
-% $r(3) \leftarrow \phi [$(0, Normal 1); (4, Normal 2)$]$ \\
-% $r(4) \leftarrow \phi [$(1, Normal 1); (6, Normal 2)$]$ \\
-% $r(5) \leftarrow \phi [$(2, Normal 1); (7, Normal 2)$]$ \\
-% $]$ $[$ \\
-% $r(6) \leftarrow r(4) + r(3);$ \\
-% $r(7) \leftarrow r(5) - i(1);$ \\
-% $]$ (if $r(7) = i(1)$ then $B_3$ else $B_2$) \\
+CoFixpoint b2 : block :=
+  Block (Normal 2) [
+    r(3) <- phi [(0, Normal 1); (4, Normal 2)];
+    r(4) <- phi [(1, Normal 1); (6, Normal 2)];
+    r(5) <- phi [(2, Normal 1); (7, Normal 2)]
+  ] [
+    r(6) <- r(4) + r(3);
+    r(7) <- r(5) - i(1)
+  ] (
+    if r(7) = i(1)
+    then b3
+    else b2
+  ).
 
-% $B_3 :=$ Block (Normal 3) $[]$ $[]$ (ret $r(6)$) \\
-
-% \begin{lstlisting}[style=Rocq]
-% Definition b3 : block :=
-%   Block (Normal 3) [] [] (ret r(6)).
-
-% CoFixpoint b2 : block :=
-%   Block (Normal 2) [
-%     r(3) <- phi [(0, Normal 1); (4, Normal 2)];
-%     r(4) <- phi [(1, Normal 1); (6, Normal 2)];
-%     r(5) <- phi [(2, Normal 1); (7, Normal 2)]
-%   ] [
-%     r(6) <- r(4) + r(3);
-%     r(7) <- r(5) - i(1)
-%   ] (
-%     if r(7) = i(1)
-%     then b3
-%     else b2
-%   ).
-
-% Definition b1 : block :=
-%   Block (Normal 1) [] [
-%     r(0) <- i(0);  (* Second temp *)
-%     r(1) <- i(1);  (* First temp *)
-%     r(2) <- i(12)  (* Iterator *)
-%   ] (
-%     jump b2
-%   ).
-% \end{lstlisting}
+Definition b1 : block :=
+  Block (Normal 1) [] [
+    r(0) <- i(0);  (* Second temp *)
+    r(1) <- i(1);  (* First temp *)
+    r(2) <- i(12)  (* Iterator *)
+  ] (
+    jump b2
+  ).
+\end{lstlisting}
 \end{minipage}
 \hfill
-% \begin{minipage}{0.30\textwidth}
-\begin{minipage}{0.35\textwidth}
+\begin{minipage}{0.30\textwidth}
+% \begin{minipage}{0.35\textwidth}
 \centering
 \begin{tikzpicture}[
     node distance=10mm,

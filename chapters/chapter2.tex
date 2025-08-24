@@ -32,7 +32,7 @@ To solve such cases, in our project, we use two common workarounds.
 
 % There are more, say that in this theses you only use these 2 workaround
 The first approach we use is fuel-based recursion, it consists in adding an artificial decreasing argument, commonly named \texttt{fuel}, to the function signature.
-Here is the division function with a definition that is accepted by Roqc:
+Here is the division function with a definition that is accepted by Rocq:
 
 \begin{lstlisting}[style=Rocq]
 Fixpoint div (a b : nat) (fuel : nat) : nat :=
@@ -235,7 +235,7 @@ Take the program show in \Cref{fig:ig1}, we derive the following interferences:
   \item Finally, at line 5, both \texttt d and \texttt a are live, since they will be used later at line 6;
 \end{itemize}
 
-We use these interferences to build the interference graph in \Cref{fig:ig2}, and we present a valid three-coloring for that graph. After finding the coloring we translate each variable into its assigned register in \Cref{fig:ig3}.
+We use these interferences to build the interference graph in \Cref{fig:ig2}, and we present a valid three-coloring for that graph in \Cref{fig:ig3}. After finding the coloring we translate each variable into its assigned register in \Cref{fig:ig4}.
 
 \begin{figure}[ht]
 \centering
@@ -255,13 +255,13 @@ int foo() {
 \hfill
 \begin{minipage}{0.48\textwidth}
   \centering
-  \caption{Three-coloring of the interference graph of \Cref{fig:ig1}.}
+  \caption{Interference graph of program shown in \Cref{fig:ig1}.}
   \begin{tikzpicture}[scale=1, every node/.style={circle, draw, minimum size=8mm}]
-    \node[fill=orange!50]    (a) at (1,1.5)  {a};
-    \node[fill=purple!50] (b) at (0,0)      {b};
-    \node[fill=cyan!50] (c) at (2,0)     {c};
-    \node[fill=purple!50] (d) at (3,1.5)    {d};
-    \node[fill=orange!50] (e) at (4,0)       {e};
+    \node (a) at (1,1.5)  {a};
+    \node (b) at (0,0)      {b};
+    \node (c) at (2,0)     {c};
+    \node (d) at (3,1.5)    {d};
+    \node (e) at (4,0)       {e};
 
     \draw (a) -- (b);
     \draw (b) -- (c);
@@ -272,19 +272,40 @@ int foo() {
 \end{minipage}
 \end{figure}
 
-\begin{figure}
-\label{fig:ig3}
+\definecolor{darkgreen}{RGB}{0,100,0}
+\begin{figure}[ht]
+\centering
+\begin{minipage}{0.48\textwidth}
+  \centering
+  \caption{Three-coloring of the interference graph shown in \Cref{fig:ig2}.}
+  \begin{tikzpicture}[scale=1, every node/.style={circle, draw, minimum size=8mm}]
+    \node[fill=orange!50]    (a) at (1,1.5)  {a};
+    \node[fill=purple!50] (b) at (0,0)      {b};
+    \node[fill=darkgreen!50] (c) at (2,0)     {c};
+    \node[fill=purple!50] (d) at (3,1.5)    {d};
+    \node[fill=orange!50] (e) at (4,0)       {e};
+
+    \draw (a) -- (b);
+    \draw (b) -- (c);
+    \draw (a) -- (c);
+    \draw (d) -- (a);
+  \end{tikzpicture}
+  \label{fig:ig3}
+\end{minipage}
+\hfill
+\begin{minipage}{0.48\textwidth}
 \lstset{style=C}
-\begin{lstlisting}[caption={Program shown in \Cref{fig:ig1} after \gls{ra}.}, label={fig:ig3}]
+\begin{lstlisting}[caption={{Program shown in \Cref{fig:ig1} after \gls{ra}.}}, label={fig:ig4}]
 int foo() {
     int $\color{orange}{r_1}$ = get_a();
     int $\color{purple}{r_2}$ = get_b();
-    int $\color{cyan}{r_3}$ = $\color{orange}{r_1}$ + $\color{purple}{r_2}$;
-    $\color{purple}{r_2}$ = $\color{cyan}{r_3}$ + $\color{purple}{r_2}$;
+    int $\color{darkgreen}{r_3}$ = $\color{orange}{r_1}$ + $\color{purple}{r_2}$;
+    $\color{purple}{r_2}$ = $\color{darkgreen}{r_3}$ + $\color{purple}{r_2}$;
     $\color{orange}{r_1}$ = $\color{orange}{r_1}$ + $\color{purple}{r_2}$;
     return $\color{orange}{r_1}$;
 }
 \end{lstlisting}
+\end{minipage}
 \end{figure}
 
 \subsection{Register Assignment in SSA Form}

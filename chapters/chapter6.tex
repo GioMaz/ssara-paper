@@ -56,7 +56,7 @@ Before defining the predicate, let us introduce some notation.
 Let $G = (V, E)$, the predicate $\mathrm{Simplicial}(u, G)$ on the nodes of a graph is defined inductively by the following rules:
 \begin{mathpar}
     \inferrule*[Right=SimplicialSingleton]
-        {\neg V(u)}
+        {u \not \in V}
         {\mathrm{Simplicial}(u, G + u)}
     \\
     \inferrule*[Right=SimplicialNode]
@@ -103,30 +103,30 @@ Let $G = (V, E)$, the predicate $\mathrm{Chordal}_2(G)$ is defined inductively b
 \end{mathpar}
 \end{definition}
 
-We can show that \Cref{def:chordal1}, and \Cref{def:chordal2} are equivalent. From now on we will call these definitions respectively $\mathrm{Chordal}_1$ and $\mathrm{Chordal}_2$. For the purpose of the subsequent proofs, we only need one side of the implication.
+From now on, we will refer to the two definitions of chordality, \Cref{def:chordal1}, and \Cref{def:chordal2}, respectively with Chordal$_1$ and Chordal$_2$. Intuitively, these two definitions are equivalent. However, for our purpose, we only need one side of the implication.
 
 \begin{lemma}[Implication From Chordal$_1$ to Chordal$_2$]\label{lem:chordal12}
     Let $G = (V, E)$, if $\mathrm{Chordal}_1(G)$ then $\mathrm{Chordal}_2(G)$.
 \end{lemma}
 
 \begin{proof}
-    Because of Chordal$_1(G)$, there exists a permutation $u_1, u_2, \dots, u_n$ which is a \gls{peo} . We proceed by induction over the size of the \gls{peo}.
+    Because of Chordal$_1(G)$, there exists a permutation $u_1, u_2, \dots, u_n$ which is a \gls{peo}. We proceed by induction over the size of the \gls{peo}.
 
     \medskip
 
     \textbf{Base case:}
-    If the \gls{peo} is empty, this means that $G$ is the empty graph, because of the \textsc{ChordalEmpty} rule, Chordal$_2(G)$.
+    If the \gls{peo} is empty, this means that $G$ is the empty graph. Now, because of the \textsc{ChordalEmpty} rule, Chordal$_2(G)$ holds.
 
     \medskip
 
     \textbf{Inductive hypothesis:}
-    Assume that $u_n, u_{n-1}, \dots, u_2, u_1$ being a \gls{peo}, implies Chordal$_2(G)$. Now, we add the node $u_{n+1}$ into the \gls{peo}, by either adding it as a singleton or with an edge, obtaining $G'$. We must prove that, if $u_{n+1}, u_n, u_{n-1}, \dots, u_2, u_1$ is a valid \gls{peo}, then Chordal$_2(G')$ holds.
+    Assume that $u_n, u_{n-1}, \dots, u_2, u_1$ being a \gls{peo}, implies Chordal$_2(G)$. Now, we add the node $u_{n+1}$ into the \gls{peo}, by either adding it to the graph as a singleton or with an edge, obtaining $G'$. We must prove that, if $u_{n+1}, u_n, u_{n-1}, \dots, u_2, u_1$ is a valid \gls{peo}, then Chordal$_2(G')$ holds.
 
     \medskip
 
     \textbf{Inductive step:}
-    Let's take the case where $G' = G + u_{n+1}$. Assume $u_{n+1}, u_{n}, u_{n-1}, \dots, u_2, u_1$ is a valid \gls{peo}. Then, if we remove $u_{n+1}$ from the graph, because it is a singleton, it doesn't interfere with the rest of the nodes. We then know that $u_n, u_{n-1}, \dots, u_2, u_1$ is a \gls{peo}, and because of the inductive hypothesis, we know that Chordal$_2(G)$. Now, since $u_{n+1}$ is not connected to the rest of the graph, Simplicial$(u, G')$ is the case. Also, because $G = G' - u_{n+1}$, we can say that Chordal$_2(G' - u_{n+1})$. We then apply the \textsc{ChordalStep} rule, obtaining Chordal$_2(G')$.
-    Now, let's take into consideration the case where $G' = G + \{ u_{n+1}, v \}$. In particular, the case where $v \in E$ and $u_{n+1} \not \in E$. In this case, $u_{n+1}$ is not a singleton. However, it has only one neighbor, namely $v$, and so it's still simplicial. Because of that we can repeat the same procedure as before.
+    Let's take the case where $G' = G + u_{n+1}$. Assume $u_{n+1}, u_{n}, u_{n-1}, \dots, u_2, u_1$ is a valid \gls{peo}. Then, if we remove $u_{n+1}$ from the graph, because it is a singleton, the remaining graph is still chordal. We then know that $u_n, u_{n-1}, \dots, u_2, u_1$ is a \gls{peo}. We apply this result to the inductive hypothesis, obtaining that Chordal$_2(G)$. Now, since $u_{n+1}$ is not connected to the rest of the graph, Simplicial$(u, G')$ is the case. Also, because $G = G' - u_{n+1}$, we can say that Chordal$_2(G' - u_{n+1})$. We then apply the \textsc{ChordalStep} rule, obtaining Chordal$_2(G')$.
+    Now, let's take into consideration the case where $G' = G + \{ u_{n+1}, v \}$. In particular, the case where $v \in E$ and $u_{n+1} \not \in E$. In this case, $u_{n+1}$ is not a singleton. However, it has only one neighbor, namely $v$, so it's still simplicial. Because of that, we can repeat the same procedure as before.
 \end{proof}
 
 Now, we introduce the completeness theorem for \texttt{is\_simplicialb} with respect to $\mathrm{Simplicial}$.
@@ -139,5 +139,5 @@ Let $G = (V, E)$ and $u \in V$ such that $\mathrm{Simplicial}(u, G)$ holds, then
     Let $G = (V, E)$, if $\mathrm{Chordal}_1(G)$ and \texttt{eliminate\_step} does not return any node, then $G = (\emptyset, \emptyset)$.
 \end{theorem}
 \begin{proof}
-    Assume Chordal$_1(G)$ and that \texttt{eliminate\_next} does not return any node. By \Cref{lem:chordal12}, Chordal$_2(G)$. As stated in \Cref{def:chordal2}, either $G$ is the empty graph, or there exists $u$ such that $\mathrm{Simplicial(u, G)}$ and $\mathrm{Chordal}_2(G - u)$. In the second case, \Cref{lem:sbcomp} lets us derive that \texttt{is\_simplicialb} returns \texttt{true} for $u$. However, since \texttt{eliminate\_step} did not return any value, this contradicts the assumption. Because of that, the only possible case is the one where $G = (\emptyset, \emptyset)$.
+    Assume Chordal$_1(G)$ and that \texttt{eliminate\_next} does not return any node. By \Cref{lem:chordal12}, Chordal$_2(G)$ holds. As stated in \Cref{def:chordal2}, either $G$ is the empty graph, or there exists $u$ such that $\mathrm{Simplicial(u, G)}$ and $\mathrm{Chordal}_2(G - u)$. In the second case, \Cref{lem:sbcomp} lets us derive that \texttt{is\_simplicialb} returns \texttt{true} for $u$. However, this contradicts the assumption, since \texttt{eliminate\_step} did not return any value. Because of that, the only possible case is the one where $G = (\emptyset, \emptyset)$.
 \end{proof}
