@@ -24,21 +24,27 @@ After extraction, we compose the various phases of our \gls{ra} pipeline into th
 
 \begin{lstlisting}[style=OCaml]
 let regassign irvreg_program =
+  (* Perform liveness analysis *)
   let (programinfo, _) = analyze_program irvreg_program fuel_analyze in
+  (* Build the interference graph *)
   let interfgraph = get_ig programinfo in
+  (* Build the PEO *)
   let peo = eliminate interfgraph in
+  (* Build the coloring *)
   let coloring =
     match get_coloring peo interfgraph with
     | Some c -> c
     | None -> failwith "Not enough registers to complete assignment"
   in
+  (* Assign colors *)
   let irpreg_program = color_program coloring irvreg_program in
+  (* Perform SSA destruction *)
   ssa_destruct fuel_destruct irpreg_program
 ;;
 \end{lstlisting}
 
 This function accepts a program written in \gls{jair} and returns an equivalent program without $\phi$-instructions and using only x86-64 registers.
-Note that, at line 8, we panic if we are not able to perform the coloring due to a high number of variables, this check is mandatory, as we do not perform spilling.
+Note that, at line 12, we throw an expection if we are not able to perform the coloring due to a high number of variables, this check is mandatory, as we do not perform spilling.
 
 \section{Code Generation}
 \label{sec:codegen}
@@ -88,9 +94,9 @@ let gen_irpreg_program out program =
 ;;
 \end{lstlisting}
 
-At line 14 we generate the label of the current block, using the \texttt{gen\_label} function. Then, at line 17 we generate the body of instructions of the basic block. Finally, at line 20, we generate the jump instruction. We continue with the recursion until we either reach a \texttt{Ret} instruction or we encounter an already visited block.
+At line 14, we generate the label of the current block, using the \texttt{gen\_label} function. Then, at line 17 we do the same for the body of instructions of the basic block. Finally, at line 20, we generate the jump instruction. We continue with the recursion until we either reach a \texttt{Ret} instruction or we encounter an already visited block.
 
-It is important to note, that \gls{jair} is a three-address code representation. While \gls{nasm} only allows instructions that have a maximum of two arguments. Because of that, translation of binary operations must be treated specially.
+It is important to note that \gls{jair} is a three-address code representation, while \gls{nasm} only allows instructions that have a maximum of two arguments. Because of that, translation of binary operations must be treated specially.
 Given physical registers \texttt A \texttt B, and \texttt C, we identify all the possible cases of a binary, non-commutative operation:
 \begin{lstlisting}[style=Rocq]
 Definition i1 : inst := r(A) <- r(A) / r(A).
@@ -109,7 +115,7 @@ Definition i5 : inst := r(A) <- r(B) / r(C).
 % \end{enumerate}
 
 \lstset{style=NASM}
-In instruction \texttt{i1}, a \gls{nasm} translation is straightforward, we can, in fact, use \lstinline{idiv A A}. The same goes for \texttt{i2}, where we can use \lstinline{idiv A B}. However, in \texttt{i3}, we see that no singular \gls{nasm} instruction can perform the intended operation. In particular, if we translate the operation as \lstinline{idiv A B}, we obtain an incorrect result, as division is non-commutative. Whereas, if we translate it as \lstinline{idiv B A}, the result will be written to register \texttt B, which is not the intended destination. For this case we use the following approach:
+In instruction \texttt{i1}, a \gls{nasm} translation is straightforward. We can, in fact, use \lstinline{idiv A A}. The same goes for \texttt{i2}, where we can use \lstinline{idiv A B}. However, in \texttt{i3}, we see that no singular \gls{nasm} instruction can perform the intended operation. In particular, if we translate the operation as \lstinline{idiv A B}, we obtain an incorrect result, as division is non-commutative. Whereas, if we translate it as \lstinline{idiv B A}, the result will be written to register \texttt B, which is not the intended destination. For this case we use the following approach:
 
 \begin{lstlisting}[style=NASM]
 mov tmp A
@@ -120,7 +126,7 @@ idiv A tmp
 At line 1, we move the value of \texttt A into a temporary. At line 2, we move the content of \texttt B into the target register \texttt A. Finally, at line 3, we divide \texttt A (containing the initial value of \texttt B) by \texttt{tmp} (containing the initial value of \texttt A).
 It is important to note that register \texttt{tmp} is only used inside \texttt{Point1} and \texttt{Point2} blocks. Because of that, there is no risk of colliding with a previous usage of that register.
 
-Now, even \texttt{i4} requires multiple \gls{nasm} instructions, as a literal translation would still overwrite the content of \texttt B. We solve it this way, with two instruction:
+Now, even \texttt{i4} requires multiple \gls{nasm} instructions, as a literal translation would still overwrite the content of \texttt B. We solve this issue with the following code sequence:
 
 \begin{lstlisting}
 mov A B
@@ -134,7 +140,7 @@ mov A B
 idiv A C
 \end{lstlisting}
 
-In the previous examples, we used the division operator, which is binary and non-commutative. This is arguably the hardest case we could encounter, as for unary operators and load/store instructions, \gls{nasm} translation is straightforward.
+In the previous examples, we used the division operator, which is binary and non-commutative. This is arguably the hardest case we could encounter, as for unary operators and load/store instructions, translation to \gls{nasm} is straightforward.
 We introduce a function specifically for handling the cases we just discussed:
 
 \begin{lstlisting}[style=OCaml]
@@ -167,12 +173,13 @@ let gen_3ac_2ac out opcode r r' v =
 ;;
 \end{lstlisting}
 
-At line 2, we handle cases where the destination register is the same as the first operand. This translates directly into a \gls{nasm} instruction. At line 8, we handle the case where the second operand is an integer immediate value. Here, we just need to move the first operand into the destination register, and then perform the operation. At line 14, we implement the cases we discussed previously. Expect for \texttt{i1} and \texttt{i2}, which are handled together with the other instructions at line 2. Finally, at line 24, we handle the case where the second operand is a pointer. Since pointers are also immediate values, we emit the same instructions as the first branch of the match.
+At line 2, we handle the cases where the destination register is the same as the first operand. This translates directly into a \gls{nasm} instruction. At line 8, we handle the case where the second operand is an immediate integer value. Here, we just need to move the first operand into the destination register, and then perform the operation. At line 14, we implement the cases we discussed previously. Expect for \texttt{i1} and \texttt{i2}, which are handled together with the other instructions at line 2. Finally, at line 24, we handle the case where the second operand is a pointer. Since pointers are also immediate values, we emit the same instructions as the first branch of the match.
 
 \section{Examples}
 \label{sec:examples}
 
 Here we present some \gls{jair} programs and their compiled version. We also include their return values, respectively on the \gls{jair} interpreter, and on x86-64 hardware.
+In \Cref{fig:ex1}, we translate a \gls{jair} program that computes the factorial of five. The \gls{ra} phase finds an optimal coloring with two registers, namely \texttt{rcx} and \texttt{rbx}. Additionally, at lines 18 and 19, we use \texttt{rax} and \texttt{rdi} to perform a syscall and terminate the program. After running the two programs, both of them return \texttt{120}.
 
 % /-----------+
 % | EXAMPLE 1 |
@@ -234,9 +241,11 @@ L2.2:
   jmp L2
 \end{lstlisting}
 \end{minipage}
-\caption{Translation of a program that computes the factorial of 5, both the \gls{jair} program and the \gls{nasm} program return 120.}
+\caption{Left: \gls{jair} program that computes the factorial of five. Right: translation of the program into \gls{nasm}}
 \label{fig:ex1}
 \end{figure}
+
+In \Cref{fig:ex2}, we translate a simple program that increments a counter up to twenty, with a step of three. Here, the \gls{ra} returns a two-coloring with registers \texttt{rbx} and \texttt{rcx}. With the addition of \texttt{rax} and \texttt{rdi}, in order to perform the final syscall.
 
 % /-----------+
 % | EXAMPLE 2 |
@@ -294,8 +303,11 @@ L3:
   syscall
 \end{lstlisting}
 \end{minipage}
-\caption{Translation of a program that increments a counter up to 21, both the \gls{jair} program and the \gls{nasm} program return 21.}
+\caption{Left: \gls{jair} program that increments a counter with a step of three. Right: translation of the program into \gls{nasm}}
+\label{fig:ex2}
 \end{figure}
+
+In \Cref{fig:ex3}, we translate a program that computes the twelfth Fibonacci number. Here, as we would expect, we obtain a three-coloring. With registers \texttt{rbx}, \texttt{rcx} and \texttt{rdx}. In the \gls{jair} program, we use the $\phi$-instruction at lines 6 and 7 in order to copy the `new' temporary variable \texttt{r(4)} into the `old' register \texttt{r(3)}. This translates into the parallel move that we see in the \gls{nasm} code under block \texttt{L2.2}, at line 27. After executing both of the programs, their result is \texttt{144}.
 
 % /-----------+
 % | EXAMPLE 3 |
@@ -369,5 +381,6 @@ L2.2:
   jmp L2
 \end{lstlisting}
 \end{minipage}
-\caption{Translation of the Fibonacci of 12, both the \gls{jair} program and the \gls{nasm} program return 144.}
+\caption{Left: \gls{jair} program that computes the twelfth Fibonacci number. Right: translation of the program into \gls{nasm}}
+\label{fig:ex3}
 \end{figure}

@@ -43,7 +43,8 @@ Inductive preg : Type :=
   | UNASSIGNED.
 \end{lstlisting}
 
-We also include the \texttt{UNASSIGNED} register, which is used as a default value for the coloring. We explain the purpose of this register in \Cref{sec:ra}. Moreover, we will prove that the coloring function will never return this constructor, in \Cref{cha:verification}.
+We also include the \texttt{UNASSIGNED} register, which is used as a default value for the coloring. We explain the purpose of this register in \Cref{sec:ra}.
+
 Along with the physical register type, we introduce some global definitions for special registers.
 
 \begin{lstlisting}[style=Rocq]
@@ -53,7 +54,7 @@ Definition rbp : preg := RBP.
 \end{lstlisting}
 
 At line 1, we define \texttt{tmp}, this register is used by the \gls{ssa} destruction algorithm to perform register swaps. At lines 2 and 3, we define respectively \texttt{rsp} and \texttt{rbp}. These two registers are special as they contain values required to interact with the stack.
-Registers \texttt{tmp}, \texttt{rsp}, and \texttt{rbp} must not be overwritten by user variables. Because of that, we exclude them from the pool of registers during \gls{ra}. This pool of registers is defined as \texttt{preg\_allowed}, and it contains every register except for the three we just mentioned and \texttt{UNASSIGNED}.
+Registers \texttt{tmp}, \texttt{rsp}, and \texttt{rbp} must not be overwritten by user variables. Because of that, we exclude them from the pool of registers during \gls{ra}. This set of registers is defined as \texttt{preg\_allowed}, and it contains every register except for the three we just mentioned and \texttt{UNASSIGNED}.
 
 \subsection{Labels}
 
@@ -102,10 +103,10 @@ We define the syntax of expressions:
 \begin{align*}
 \nt{expression} &::= \nt{value} \\
 &\mid \text{load} \nt{value} \\
-&\mid r( \nt{register} ) + \nt{value} \\
-&\mid r( \nt{register} ) - \nt{value} \\
-&\mid r( \nt{register} ) * \nt{value} \\
-&\mid r( \nt{register} ) / \nt{value} \\
+&\mid r( \nt{register} ) \makebox[1em]{+} \nt{value} \\
+&\mid r( \nt{register} ) \makebox[1em]{-} \nt{value} \\
+&\mid r( \nt{register} ) \makebox[1em]{*} \nt{value} \\
+&\mid r( \nt{register} ) \makebox[1em]{/} \nt{value} \\
 \end{align*}
 \end{minipage}
 \hfill
@@ -123,7 +124,7 @@ Inductive expr : Type :=
 
 These include registers, memory loads, and arithmetic and logical operations. The expression non-terminal is not defined recursively to preserve the linearity of the data structure.
 
-As can be seen from the previous definitions, binary expressions always use a register as the first operand. This prevents expressions where all the operands are constants. In that case, in fact, the result can be computed during a previous step of constant folding. It should be also mentioned that, for the sake of \gls{ra}, a differentiation between unary, binary and $n$-ary expressions is unnecessary. This is because we are only concerned with the identities of the operands of an expression (the registers) and not the operators.
+As we see from the previous definitions, binary expressions always use a register as the first operand. This prevents expressions where all the operands are constants. In that case, in fact, the result can be computed during a previous step of constant folding. It should be also mentioned that, for the sake of \gls{ra}, a differentiation between unary, binary and $n$-ary expressions is unnecessary. This is because we are only concerned with the identities of the operands of an expression (the registers) and not the operators.
 
 The instruction type \texttt{inst} reflects the core operations in our language. An instruction can either define a register by assigning to it the result of an expression, or it can store a value into memory.
 
@@ -368,8 +369,7 @@ Definition b1 : block :=
   Block (Normal 0) [] [] (jump b2).
 \end{lstlisting}
 
-Despite our efforts to rule out incorrect \gls{ssa} programs, certain ill-formed programs cannot be excluded purely by the syntax. We now provide examples of such cases.
-
+Despite our efforts to rule out incorrect \gls{ssa} programs, certain ill-formed programs cannot be excluded purely by the syntax.
 A fundamental problem is that the two core policies of a \gls{ssa} form representation (see \Cref{def:ssa}) are not enforced. In particular, multiple assignments to the same register are allowed. Take the following example:
 
 \begin{lstlisting}[style=Rocq]
@@ -427,7 +427,7 @@ Definition set_reg (m : vm) (r : reg) (c : cell) : vm :=
   end.
 \end{lstlisting}
 
-Here, we take the current register file map and we wrap it with a lambda function. If the argument of that function matches register \texttt r, we return the value \texttt c, otherwise we perform $\beta$-reduction with the previous version of the register file map.
+Here, we take the current register file map, and we wrap it with a lambda function. If the argument of that function matches register \texttt r, we return the value \texttt c, otherwise we perform $\beta$-reduction with the previous version of the register file map.
 
 Now, we define analogous operations for memory access. In our implementation, memory does not support random access. Instead, we use a list that grows whenever a new value is stored, filling the previously uninitialized memory locations with zeroes. The function to retrieve the content of a memory location is defined as follows:
 
