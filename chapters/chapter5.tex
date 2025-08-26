@@ -241,7 +241,7 @@ L2.2:
   jmp L2
 \end{lstlisting}
 \end{minipage}
-\caption{Left: \gls{jair} program that computes the factorial of five. Right: translation of the program into \gls{nasm}}
+\caption{Left: \gls{jair} program that computes the factorial of five. Right: translation of the program into \gls{nasm}.}
 \label{fig:ex1}
 \end{figure}
 
@@ -303,11 +303,11 @@ L3:
   syscall
 \end{lstlisting}
 \end{minipage}
-\caption{Left: \gls{jair} program that increments a counter with a step of three. Right: translation of the program into \gls{nasm}}
+\caption{Left: \gls{jair} program that increments a counter with a step of three. Right: translation of the program into \gls{nasm}.}
 \label{fig:ex2}
 \end{figure}
 
-In \Cref{fig:ex3}, we translate a program that computes the twelfth Fibonacci number. Here, as we would expect, we obtain a three-coloring. With registers \texttt{rbx}, \texttt{rcx} and \texttt{rdx}. In the \gls{jair} program, we use the $\phi$-instruction at lines 6 and 7 in order to copy the `new' temporary variable \texttt{r(4)} into the `old' register \texttt{r(3)}. This translates into the parallel move that we see in the \gls{nasm} code under block \texttt{L2.2}, at line 27. After executing both of the programs, their result is \texttt{144}.
+In \Cref{fig:ex3}, we translate a program that computes the Twelfth Fibonacci number. Here, as we would expect, we obtain a three-coloring. With registers \texttt{rbx}, \texttt{rcx} and \texttt{rdx}. In the \gls{jair} program, we use the $\phi$-instruction at lines 6 and 7 in order to copy the `new' temporary variable \texttt{r(4)} into the `old' register \texttt{r(3)}. This translates into the parallel move that we see in the \gls{nasm} code under block \texttt{L2.2}, at line 27. After executing both of the programs, their result is \texttt{144}.
 
 % /-----------+
 % | EXAMPLE 3 |
@@ -381,6 +381,6 @@ L2.2:
   jmp L2
 \end{lstlisting}
 \end{minipage}
-\caption{Left: \gls{jair} program that computes the twelfth Fibonacci number. Right: translation of the program into \gls{nasm}}
+\caption{Left: \gls{jair} program that computes the Twelfth Fibonacci number. Right: translation of the program into \gls{nasm}.}
 \label{fig:ex3}
 \end{figure}

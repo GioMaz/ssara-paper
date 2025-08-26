@@ -318,7 +318,7 @@ In \Cref{fig:destruct} we see an example of SSA destruction in action. The branc
       >={Stealth}
     ]
     \node (entry)   at (0, 0)   [draw, label=above:\textbf{start}] {$r_0 \leftarrow 0$};
-    \node (loop)    at (0, -2)  [draw, label=left:$B_1$] {\colorbox{\cbcyan!50}{$r_1 \leftarrow \phi(r_0, r_2)$} \\ $r_2 \leftarrow r_1 + 1$};
+    \node (loop)    at (0, -2)  [draw, label=left:$B_1$] {\colorbox{orange!30}{$r_1 \leftarrow \phi(r_0, r_2)$} \\ $r_2 \leftarrow r_1 + 1$};
     \node (end)     at (0, -4)  [draw, label=left:$B_2$] {ret $r_2$};
     \draw[->] (entry) -- (loop);
     \draw[->] ([xshift=10pt]loop.south) to[out=315, in=45, looseness=8] ([xshift=10pt]loop.north);
@@ -333,10 +333,10 @@ In \Cref{fig:destruct} we see an example of SSA destruction in action. The branc
       every node/.style={draw, align=left, inner sep=4pt},
       >={Stealth}
     ]
-    \node (entry)   at (0, 0)     [draw, label=above:\textbf{start}] {$r_0 \leftarrow 0$ \\ \colorbox{\cbcyan!50}{$r_1 \leftarrow r_0$}};
+    \node (entry)   at (0, 0)     [draw, label=above:\textbf{start}] {$r_0 \leftarrow 0$ \\ \colorbox{orange!30}{$r_1 \leftarrow r_0$}};
     \node (loop)    at (0, -2)    [draw, label=left:$B_1$] {$r_2 \leftarrow r_1 + 1$};
     \node (loop1)   at (-1.5, -4) [draw, label=left:$B_{1.1}$] {nop};
-    \node (loop2)   at (1.5, -4)  [draw, label=left:$B_{1.2}$] {\colorbox{\cbcyan!50}{$r_1 \leftarrow r_2$}};
+    \node (loop2)   at (1.5, -4)  [draw, label=left:$B_{1.2}$] {\colorbox{orange!30}{$r_1 \leftarrow r_2$}};
     \node (end)     at (0, -6)    [draw, label=left:$B_2$] {ret $r_2$};
     \draw[->] (entry) -- (loop);
     \draw[->] (loop) -- (loop1);

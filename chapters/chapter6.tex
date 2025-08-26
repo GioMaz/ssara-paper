@@ -86,7 +86,7 @@ Let $G = (V, E)$, and $u$ be any node, we say that $u$ is simplicial in graph $G
     Let $G = (V, E)$, if \texttt{eliminate\_step} returns node $u$, then $\simplicial{u}{G}$. \Coqed
 \end{lemma}
 \begin{proof}
-    Assume that \texttt{eliminate\_next} returns node $u$, this means that the boolean property \texttt{is\_simplicialb} is \texttt{true} for that node. It follows immediately from \Cref{lem:sbsound} that $\simplicial{u}{G}$.
+    Assume that \texttt{eliminate\_next} returns node $u$. This means that the boolean property \texttt{is\_simplicialb} is \texttt{true} for that node. It follows immediately from \Cref{lem:sbsound} that $\simplicial{u}{G}$.
 \end{proof}
 
 \Cref{lem:sbsound} and \Cref{lem:inv-elim-1} are rather important, as they prove that the nodes inside of a \gls{peo} are simplicial with respect to the graph where they are extracted. This property is at the base of our coloring algorithm. In fact, we know that coloring a simplicial node simply consists in finding a color that is not already taken by its neighbors.
@@ -103,25 +103,20 @@ We introduce an inductive definition of chordality with the $\chordalindsymbol$ 
 
 \begin{definition}[$\chordalindsymbol$]\label{def:chordal2}
 Let $G = (V, E)$, we say that graph $G$ is chordal, that is $\chordalind{G}$, if one of the following rules are satisfied:
-
-% \begin{center}
-%     \judgboxb{\chordalone{G}}{ABCDcidsojcccc \\ icjsojc c\\ cjoisjc}
-% \end{center}
-
 \begin{mathpar}
     \inferrule*[Right=ChordalEmpty]
         {\empty}
         {\chordalind{G_\emptyset}}
     \\
     \inferrule*[Right=ChordalStep]
-        {\exists u (\simplicial{u}{G} \land \chordalind{G - u})}
+        {\exists u (\simplicial{u}{G} \ \land \chordalind{G - u})}
         {\chordalind{G}}
 \end{mathpar}
 \end{definition}
 
 From now on, we will refer to chordality as \Cref{def:chordal1} with $\chordalpeosymbol$, to distinguish it from the $\chordalindsymbol$ predicate we just introduced. Intuitively, these two definitions should be equivalent. In order to prove it, we start with the forward implication.
 
-\begin{lemma}[Implication From $\chordalpeosymbol$ to $\chordalindsymbol$]\label{lem:chordal12}
+\begin{lemma}[Correctness of $\chordalindsymbol$]\label{lem:chordal12}
     Let $G = (V, E)$, if it is the case that $\chordalpeo{G}$ then $\chordalind{G}$.
 \end{lemma}
 
@@ -131,23 +126,23 @@ From now on, we will refer to chordality as \Cref{def:chordal1} with $\chordalpe
     \medskip
 
     \textbf{Base case:}
-    If the \gls{peo} is empty, this means that $G$ is the empty graph. Now, because of the \textsc{ChordalEmpty} rule, $\chordalind{G}$ holds.
+    If the \gls{peo} is empty, this means that $G$ is the empty graph. Follows by \textsc{ChordalEmpty} that $\chordalind{G}$ holds.
 
     \medskip
 
     \textbf{Inductive hypothesis:}
-    Assume that, if $u_1, u_2, \dots, u_n$ is a \gls{peo}, then $\chordalind{G}$.
+    Assume that if $u_1, u_2, \dots, u_n$ is a \gls{peo}, then $\chordalind{G}$.
 
     \medskip
 
     \textbf{Inductive step:}
     We add the simplicial node $u_{n+1}$ into the \gls{peo}, obtaining $G'$. We must prove that, if the sequence $u_1, u_2, \dots u_n, u_{n+1}$ is a \gls{peo}, then $\chordalind{G'}$ holds.
-    A \gls{peo} is an ordering where each node is connected only to the nodes in previous positions. Because of that, if any node is simplicial in $G$, then it is also simplicial in $G' - u_{n+1}$. This means that, if $\chordalpeo{G'}$ then $\chordalpeo{G' - u_{n+1}}$. Since our assumption says that $\chordalpeo{G'}$, we know that $\chordalpeo{G' - u_{n+1}}$. We use the inductive hypothesis to obtain that $\chordalind{G}$. Now, once again, we add $u_{n+1}$ back into graph $G$. In our assumption we expanded the \gls{peo} with $u_{n+1}$, because $u_{n+1}$ is inside a \gls{peo}, it must be the case that $\simplicial{u_{n+1}}{G'}$. Moreover, we know that $\chordalind{G}$, which is the same as saying that $\chordalind{G' - u_{n+1}}$. The two propositions $\simplicial{u_{n+1}}{G'}$ and $\chordalind{G' - u_{n+1}}$, form exactly the premise of \textsc{ChordalStep}. Because of that, $\chordalind{G'}$ holds.
+    Recall \Cref{def:peo}, therefore if $\chordalpeo{G'}$ then $\chordalpeo{G' - u_{n+1}}$. We use the inductive hypothesis to obtain that $\chordalind{G}$. Now, once again, we add $u_{n+1}$ back into graph $G$. In our assumption, we expanded the \gls{peo} with $u_{n+1}$, because $u_{n+1}$ is inside a \gls{peo}, it must be the case that $\simplicial{u_{n+1}}{G'}$. Moreover, we know that $\chordalind{G}$, which is the same as saying that $\chordalind{G' - u_{n+1}}$. The two propositions $\simplicial{u_{n+1}}{G'}$ and $\chordalind{G' - u_{n+1}}$, form exactly the premise of \textsc{ChordalStep}. Because of that, $\chordalind{G'}$ holds.
 \end{proof}
 
 Now, we prove the backwards implication.
 
-\begin{lemma}[Implication From $\chordalindsymbol$ to $\chordalpeosymbol$]\label{lem:chordal21}
+\begin{lemma}[Soundness of $\chordalindsymbol$]\label{lem:chordal21}
     Let $G = (V, E)$, if it is the case that $\chordalind{G}$ then $\chordalpeo{G}$.
 \end{lemma}
 \begin{proof}
@@ -165,7 +160,7 @@ Now, we prove the backwards implication.
 
     \textbf{Inductive step:}
     We need to prove that for all the graphs $G' = (V', E')$ such that $|V'| < n+1$, if $\chordalind{G'}$, then there exists a \gls{peo} for $G'$.
-    Because $\chordalind{G'}$, there exists a node $v$ such that $\simplicial{v}{G'}$ and $\chordalind{G' - v}$. Since $|V(G' - v)| < n$, we apply the inductive hypothesis, obtaining that $u_1, u_2, \dots, u_n$ is a valid \gls{peo} for $G' - v$. Then, because $\simplicial{v}{G'}$, we can create a \gls{peo} for $G'$ which is $u_1, u_2, \dots, u_n, v$.
+    Because $\chordalind{G'}$, there exists a node $v$ such that $\simplicial{v}{G'}$ and $\chordalind{G' - v}$. Since $|V(G' - v)| < n$, we apply the inductive hypothesis, obtaining that $u_1, u_2, \dots, u_n$ is a valid \gls{peo} for $G' - v$. Then, because $\simplicial{v}{G'}$, we create a \gls{peo} for $G'$ which is $u_1, u_2, \dots, u_n, v$.
 \end{proof}
 
 Now, we prove the completeness of \texttt{is\_simplicialb} with respect to $\simplicialsymbol$.
