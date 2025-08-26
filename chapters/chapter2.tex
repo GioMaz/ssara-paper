@@ -3,7 +3,7 @@
 \chapter{Background}
 \label{cha:background}
 
-In this chapter, we present the tools and concepts employed throughout this project. We begin by introducing the Rocq Proof Assistant, highlighting the features that make it suitable for our implementation. We then describe the \gls{ssa} form, the intermediate representation family we use. Finally, we discuss the theoretical foundations of register assignment, with particular attention to SSA programs.
+In this chapter, we present the tools and concepts employed throughout this project. We begin by introducing the Rocq Proof Assistant, highlighting the features that make it suitable for our implementation. We then describe the \gls{ssa} form, the intermediate representation family we use. Finally, we discuss the theoretical foundations of \gls{ra}, with particular attention to SSA programs.
 
 \section{The Rocq Proof Assistant}
 
@@ -86,12 +86,12 @@ Proof.
 Qed.
 \end{lstlisting}
 
-Here, at line 2, we introduce the quantified variables and the two assumptions into the context. At line 3 we perform case analysis on the argument \texttt a. In the first case, at line 4, we show that \texttt{a = 0}, contradicts the other assumptions. Finally, at line 5, we use the \texttt{lia} tactic to automatically prove that, for the case \texttt{a > 0} the goal is valid.
+Here, at line 2, we introduce the quantified variables and the two assumptions into the context. At line 3 we perform case analysis on the argument \texttt a. In the first case, at line 4, we show that \texttt{a = 0} contradicts the other assumptions. Finally, at line 5, we use the \texttt{lia} tactic to automatically prove that for the case \texttt{a > 0} the goal is valid.
 
 \subsection{Coinductive Types}
 \label{subsec:coind}
 
-In order to define the most common data types, we use the \texttt{Inductive} keyword. This keyword allows the definition of recursive types, like trees or lists. Here we show the definition of the \texttt{list} data type:
+In order to define the most common recursive data types, like trees or lists, we use the \texttt{Inductive} keyword. Here we show the definition of the \texttt{list} type:
 
 \begin{lstlisting}[style=Rocq]
 Inductive list {A : Type} : Type :=
@@ -99,14 +99,14 @@ Inductive list {A : Type} : Type :=
   | Cons (a : A) (l : list).
 \end{lstlisting}
 
-However, one limitation of the previous definition, is that we are not allowed to create an instance of a list that references itself. In particular, Rocq complains about definitions like these.
+One limitation of the previous type definition, is that we are not allowed to create an instance of \texttt{list} that references itself. In particular, Rocq complains about definitions like these:
 
 \begin{lstlisting}[style=Rocq]
 Fail Definition infinite: list nat := Cons 7 infinite.
 \end{lstlisting}
 
 In fact, if Rocq were to evaluate this definition, it would get stuck creating an infinite list of sevens. Indeed, we would expect our list to have a start and an end.
-However, some types naturally require the usage self referencing definitions. For example, we may want to define the data type of graph that can contain self loops. Because of that, Rocq provides the \texttt{CoInductive} keyword. This keyword allows us to define infinite types which are evaluated lazily, avoiding the risk of getting stuck in an infinite loop. A classic example is the \texttt{stream} data type.
+However, some types naturally require the usage self referencing definitions. For example, we may want to define the data type for a graph which, by definition, can contain loops. Because of that, Rocq provides the \texttt{CoInductive} keyword. This keyword allows us to define infinite types that are evaluated lazily, avoiding the risk of getting stuck in an infinite loop. A classic example is the \texttt{stream} data type.
 
 \begin{lstlisting}[style=Rocq]
 CoInductive stream {A : Type} : Type :=
@@ -266,7 +266,7 @@ However, if we come from the second predecessor, we need to perform a swap of $r
 By looking at \Cref{def:liveness}, we see that if two variables interfere, they cannot be assigned to the same register. This is because, if they were, one of the two values would be lost.
 Now take an interference graph, as defined in \Cref{def:ig}, such that there is an edge between two variables, say $u$ and $v$. Since $u$ and $v$ interfere, they must be assigned different registers.
 It is now immediate to see that the problem of \gls{ra} consists in finding a coloring of the interference graph. In this instance of the problem, the nodes are the variables, while the colors are the physical registers.
-Take the program show in \Cref{fig:ig1}, we derive the following interferences:
+Take the program shown in \Cref{fig:ig1}, we derive the following interferences:
 \begin{itemize}
   \item At line 3, both \texttt a and \texttt b are live, since they are used later at line 4;
   \item At line 4, both \texttt c and \texttt b are live, since they are used later at line 5;
@@ -346,10 +346,10 @@ int foo() {
 \end{minipage}
 \end{figure}
 
-\subsection{Register Assignment in SSA Form}
+\subsection{\gls{ra} in SSA Form}
 \label{subsec:ssara}
 
-Before talking about register assignment in SSA form we need to define some properties of nodes and graphs.
+Before talking about \gls{ra} in SSA form we need to define some properties of nodes and graphs.
 
 \begin{definition}[Clique]\label{def:clique}
   Given a graph $G = (V, E)$, and $C \subseteq V$, we say that $C$ is a clique of $G$, iff for every $u, v \in C$, where $u \neq v$, there exists an edge $\{ u, v \} \in E$.
@@ -377,7 +377,7 @@ The reason why chordal graphs are particularly appealing are the two following t
   The interference graph of a program in \gls{ssa} form is chordal~\cite{HGG:2006:RA-SSA}.
 \end{theorem}
 
-From these, follows that, while register assignment is NP-complete for arbitrary representations, this problem becomes solvable optimally and in polynomial time for programs in \gls{ssa} form.
+From these, follows that, while \gls{ra} is NP-complete for arbitrary representations, this problem becomes solvable optimally and in polynomial time for programs in \gls{ssa} form.
 
 % TODO: more buildup
 Here we introduce some other definitions that we will use later, during the description of the algorithm.
