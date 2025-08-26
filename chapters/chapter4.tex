@@ -111,7 +111,7 @@ Definition eliminate_step
 \end{lstlisting}
 
 This function takes an interference graph (which is chordal), and finds a simplicial node, removes it, and returns both the removed node and the resulting graph.
-Note that, as we prove in \Cref{thm:inv-elim-2}, if the input graph is chordal and non-empty, the function will never return the \texttt{None} constructor. Furthermore, the resulting graph will also be chordal.
+Note that, as we prove in \Cref{lem:inv-elim-2}, if the input graph is chordal and non-empty, the function will never return the \texttt{None} constructor. Furthermore, the resulting graph will also be chordal.
 
 Now we define the \texttt{eliminate} function, that is, the function for obtaining a \gls{peo}:
 

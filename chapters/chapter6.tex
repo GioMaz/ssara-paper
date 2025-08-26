@@ -3,24 +3,24 @@
 \chapter{Verification}
 \label{cha:verification}
 
-In this chapter we present the reasoning behind the verification of the core components of our register assignment pipeline, namely, the verification of the termination and the partial correctness of the function for obtaining the \gls{peo}, defined in \Cref{subsec:peo}. Here, we report the same theorems and the respective proofs that can be found in \texttt{Peo.v} in their mechanized version.
+In this chapter we present the reasoning behind the verification of the core components of our register assignment pipeline, namely, the verification of the termination and the partial correctness of \texttt{eliminate}, which is the function for obtaining the \gls{peo}, defined in \Cref{subsec:peo}. Here, we report the same theorems and the respective mechanized proofs that can be found in the project, inside \texttt{core/Peo.v}.
 
 \section{Termination of \texttt{eliminate}}
 
-As mentioned in \Cref{subsec:funterm}, to allow a function definition, Rocq requires a proof of its termination, for functions that use structural recursion the proof of termination is inferred automatically, for other functions instead, an explicit proof of termination is required. This is the case for \texttt{eliminate}.
+As mentioned in \Cref{subsec:funterm}, to allow a function definition, Rocq requires a proof of its termination, for functions that use structural recursion the proof of termination is inferred automatically. Instead, for other functions, an explicit proof of termination is required. This is the case for \texttt{eliminate}.
 
-Take the \texttt{eliminate} function defined in \Cref{subsec:peo}, we recursively check the result of \texttt{eliminate\_step}. If the result is \texttt{Some} we continue with the recursion, otherwise, we return an empty list. Proving termination for this function consists in proving that, after an iteration, the size of the new graph is strictly lower than the size of the original graph. Being the size a natural number, at some point it will reach a base case, that is, the \texttt{O} constructor.
+Take the \texttt{eliminate} function defined in \Cref{subsec:peo}, we recursively check the result of \texttt{eliminate\_step}. If the result is \texttt{Some} we continue with the recursion, otherwise, we return an empty list. Proving termination for this function consists of proving that, after an iteration, the size of the new graph is strictly lower than the size of the original graph. Because the size is a natural number, at some point it will reach a base case, that is, the \texttt{O} constructor.
 
 \begin{theorem}[Termination of \texttt{eliminate}]\label{thm:term-elim}
     Let graph $G = (V, E)$, after performing one elimination step, we obtain $G' = (V', E')$ such that $V' \subsetneq V$. \Coqed
 \end{theorem}
 \begin{proof}
-    After one iteration of the algorithm we encounter two possible cases, if no simplicial node is found, we terminate the function immediately. Otherwise, we found a simplicial node $u$, along with the new graph $G' = (V', E')$, in this case $V' = V \setminus \{ u \}$. Finally, since $u \in V$ we can say that $V' \subsetneq V$.
+    After one iteration of the algorithm we encounter two possible cases. We either find no simplicial node, or we find a simplicial node that we name $u$, along with the graph $G - u$ that we name $G'$. In the first case, the execution terminates immediately. In the second case, however, $V' = V \setminus \{ u \}$. Because $u \in V$, we know that $V' \subsetneq V$.
 \end{proof}
 
 \section{First Invariant of \texttt{eliminate\_step}}
 
-We start by providing a constructive definition of the $\mathrm{Simplicial}$ predicate. After that, we introduce the soundness lemma for the \texttt{is\_simplicialb} function, defined in \Cref{subsec:peo}, with respect to $\mathrm{Simplicial}$.
+We start by providing a constructive definition of the $\simplicialsymbol$ relation. After that, we introduce the soundness lemma for the \texttt{is\_simplicialb} function, defined in \Cref{subsec:peo}, with respect to $\simplicialsymbol$.
 
 Before defining the predicate, let us introduce some notation.
 
@@ -53,47 +53,56 @@ Before defining the predicate, let us introduce some notation.
 \end{definition}
 
 \begin{definition}[Simplicial]
-Let $G = (V, E)$, the predicate $\mathrm{Simplicial}(u, G)$ on the nodes of a graph is defined inductively by the following rules:
+Let $G = (V, E)$, and $u$ be any node, we say that $u$ is simplicial in graph $G$, that is $\simplicial{u}{G}$, if one of the following rules are satisfied:
 \begin{mathpar}
     \inferrule*[Right=SimplicialSingleton]
         {u \not \in V}
-        {\mathrm{Simplicial}(u, G + u)}
-        % {G + u \vdash u : \text{Simplicial}}
+        % {\mathrm{Simplicial}(u, G + u)}
+        {\simplicial{u}{G}}
     \\
     \inferrule*[Right=SimplicialNode]
-        {\mathrm{Simplicial}(u, G) \\ u \neq v}
-        {\mathrm{Simplicial}(u, G + v )}
-        % {G + v \vdash u : \text{Simplicial}}
+        % {\mathrm{Simplicial}(u, G) \\ u \neq v}
+        % {\mathrm{Simplicial}(u, G + v )}
+        {\simplicial{u}{G} \\ u \neq v}
+        {\simplicial{u}{G + v}}
     \\
     \inferrule*[Right=SimplicialEdge]
-        {\mathrm{Simplicial}(u, G) \\ u \neq v' \\ u \neq v''}
-        {\mathrm{Simplicial}(u, G + \{ v', v'' \} )}
+        % {\mathrm{Simplicial}(u, G) \\ u \neq v' \\ u \neq v''}
+        % {\mathrm{Simplicial}(u, G + \{ v', v'' \} )}
+        {\simplicial{u}{G} \\ u \neq v' \\ u \neq v''}
+        {\simplicial{u}{G + \{ v', v''\}}}
     \\
     \inferrule*[Right=SimplicialNeighbor]
-        {\mathrm{Simplicial}(u, G)}
-        {\mathrm{Simplicial}(u, \addvertex{G}{N(u)}{v})}
+        {\simplicial{u}{G}}
+        {\simplicial{u}{\addvertex{G}{N(u)}{u}}}
 \end{mathpar}
 \end{definition}
 
 \begin{lemma}[Soundness of \texttt{is\_simplicialb}]\label{lem:sbsound}
-    Let $G = (V, E)$ and $u \in V$ such that \texttt{is\_simplicialb} returns \texttt{true}, then $\mathrm{Simplicial}(u, G)$ holds. \Coqed
+    Let $G = (V, E)$ and $u \in V$ such that \texttt{is\_simplicialb} returns \texttt{true}, then $\simplicial{u}{G}$. \Coqed
 \end{lemma}
 
-\begin{theorem}[First Invariant of \texttt{eliminate\_step}]\label{thm:inv-elim-1}
-    Let $G = (V, E)$, if \texttt{eliminate\_step} returns node $u$, then $\mathrm{Simplicial}(u, G)$. \Coqed
-\end{theorem}
+\begin{lemma}[First Invariant of \texttt{eliminate\_step}]\label{lem:inv-elim-1}
+    Let $G = (V, E)$, if \texttt{eliminate\_step} returns node $u$, then $\simplicial{u}{G}$. \Coqed
+\end{lemma}
 \begin{proof}
-    Assume that \texttt{eliminate\_next} returns node $u$, this means that the boolean property \texttt{is\_simplicialb} is \texttt{true} for that node. It follows immediately from \Cref{lem:sbsound} that $\mathrm{Simplicial}(u, G)$.
+    Assume that \texttt{eliminate\_next} returns node $u$, this means that the boolean property \texttt{is\_simplicialb} is \texttt{true} for that node. It follows immediately from \Cref{lem:sbsound} that $\simplicial{u}{G}$.
 \end{proof}
 
-\Cref{lem:sbsound} and \Cref{thm:inv-elim-1} are rather important, as they prove that the nodes inside a \gls{peo} are simplicial with respect to the graph where they are extracted.
+\Cref{lem:sbsound} and \Cref{lem:inv-elim-1} are rather important, as they prove that the nodes inside of a \gls{peo} are simplicial with respect to the graph where they are extracted. This property is at the base of our coloring algorithm. In fact, we know that coloring a simplicial node simply consists in finding a color that is not already taken by its neighbors.
 
 \section{Second Invariant of \texttt{eliminate\_step}}
 
-We introduce an inductive definition of chordality with the $\chordalind{\cdot}$ predicate.
+Let us define the notation for an empty graph.
 
-\begin{definition}[$\chordalind{\cdot}$]\label{def:chordal2}
-Let $G = (V, E)$, the predicate $\chordalind{G}$ is defined inductively by the following rules:
+\begin{definition}[Emtpy Graph]
+    Let $G = (V, E)$ we say that $G$ is the empty graph, that is $G = G_\emptyset$, iff $V = \emptyset$ and $E = \emptyset$.
+\end{definition}
+
+We introduce an inductive definition of chordality with the $\chordalindsymbol$ relation.
+
+\begin{definition}[$\chordalindsymbol$]\label{def:chordal2}
+Let $G = (V, E)$, we say that graph $G$ is chordal, that is $\chordalind{G}$, if one of the following rules are satisfied:
 
 % \begin{center}
 %     \judgboxb{\chordalone{G}}{ABCDcidsojcccc \\ icjsojc c\\ cjoisjc}
@@ -102,18 +111,18 @@ Let $G = (V, E)$, the predicate $\chordalind{G}$ is defined inductively by the f
 \begin{mathpar}
     \inferrule*[Right=ChordalEmpty]
         {\empty}
-        {\chordalind{(\emptyset, \emptyset)}}
+        {\chordalind{G_\emptyset}}
     \\
     \inferrule*[Right=ChordalStep]
-        {\exists u (\mathrm{Simplicial}(u, G) \land \chordalind{G - u})}
+        {\exists u (\simplicial{u}{G} \land \chordalind{G - u})}
         {\chordalind{G}}
 \end{mathpar}
 \end{definition}
 
-From now on, we will refer to chordality as \Cref{def:chordal1} $\chordalpeo{\cdot}$, to distinguish it from the $\chordalind{\cdot}$ predicate we just introduced. Intuitively, these two definitions are equivalent. In order to prove it, we start with the forward implication.
+From now on, we will refer to chordality as \Cref{def:chordal1} with $\chordalpeosymbol$, to distinguish it from the $\chordalindsymbol$ predicate we just introduced. Intuitively, these two definitions should be equivalent. In order to prove it, we start with the forward implication.
 
-\begin{lemma}[Implication From $\chordalpeo{\cdot}$ to $\chordalind{\cdot}$]\label{lem:chordal12}
-    Let $G = (V, E)$, if $\chordalpeo{G}$ then $\chordalind{G}$.
+\begin{lemma}[Implication From $\chordalpeosymbol$ to $\chordalindsymbol$]\label{lem:chordal12}
+    Let $G = (V, E)$, if it is the case that $\chordalpeo{G}$ then $\chordalind{G}$.
 \end{lemma}
 
 \begin{proof}
@@ -127,18 +136,19 @@ From now on, we will refer to chordality as \Cref{def:chordal1} $\chordalpeo{\cd
     \medskip
 
     \textbf{Inductive hypothesis:}
-    Assume that, if $u_1, u_2, \dots, u_n$ is a \gls{peo}, then $\chordalind{G}$. Now, we add the simplicial node $u_{n+1}$ into the \gls{peo}, obtaining $G'$. We must prove that, if the sequence $u_1, u_2, \dots u_n, u_{n+1}$ is a \gls{peo}, then $\chordalind{G'}$ holds.
+    Assume that, if $u_1, u_2, \dots, u_n$ is a \gls{peo}, then $\chordalind{G}$.
 
     \medskip
 
     \textbf{Inductive step:}
-    A \gls{peo} is an ordering where each node is connected only to the nodes in previous positions. Because of that, if any node is simplicial in $G$, then it is also simplicial in $G' - u_{n+1}$. Because of that, if $\chordalpeo{G'}$ then $\chordalpeo{G' - u_{n+1}}$, consequently, $\chordalind{G}$. Now, once again, we add $u_{n+1}$ into the graph $G$, such that Simplicial$(u_{n+1}, G')$. Moreover, we know that $\chordalind{G}$, which can also be represented as $\chordalind{G' - u_{n+1}}$. The two propositions we just presented, are exactly the premises of \textsc{ChordalStep}. Because of that, $\chordalind{G'}$
+    We add the simplicial node $u_{n+1}$ into the \gls{peo}, obtaining $G'$. We must prove that, if the sequence $u_1, u_2, \dots u_n, u_{n+1}$ is a \gls{peo}, then $\chordalind{G'}$ holds.
+    A \gls{peo} is an ordering where each node is connected only to the nodes in previous positions. Because of that, if any node is simplicial in $G$, then it is also simplicial in $G' - u_{n+1}$. This means that, if $\chordalpeo{G'}$ then $\chordalpeo{G' - u_{n+1}}$. Since our assumption says that $\chordalpeo{G'}$, we know that $\chordalpeo{G' - u_{n+1}}$. We use the inductive hypothesis to obtain that $\chordalind{G}$. Now, once again, we add $u_{n+1}$ back into graph $G$. In our assumption we expanded the \gls{peo} with $u_{n+1}$, because $u_{n+1}$ is inside a \gls{peo}, it must be the case that $\simplicial{u_{n+1}}{G'}$. Moreover, we know that $\chordalind{G}$, which is the same as saying that $\chordalind{G' - u_{n+1}}$. The two propositions $\simplicial{u_{n+1}}{G'}$ and $\chordalind{G' - u_{n+1}}$, form exactly the premise of \textsc{ChordalStep}. Because of that, $\chordalind{G'}$ holds.
 \end{proof}
 
 Now, we prove the backwards implication.
 
-\begin{lemma}[Implication From $\chordalind{\cdot}$ to $\chordalpeo{\cdot}$]\label{lem:chordal21}
-    Let $G = (V, E)$, if $\chordalind{}{G}$ then $\chordalpeo{}{G}$.
+\begin{lemma}[Implication From $\chordalindsymbol$ to $\chordalpeosymbol$]\label{lem:chordal21}
+    Let $G = (V, E)$, if it is the case that $\chordalind{G}$ then $\chordalpeo{G}$.
 \end{lemma}
 \begin{proof}
     We proceed by induction, this time, over the size of the graph.
@@ -149,39 +159,40 @@ Now, we prove the backwards implication.
     \medskip
 
     \textbf{Inductive hypothesis:}
-    Assume that, if for all the graphs $G = (V, E)$ such that $|V| < n$, if $\chordalind{G}$, then there exists a \gls{peo} for $G$. We need to prove that for all the graphs $G' = (V', E')$ such that $|V'| < n+1$, if $\chordalind{G'}$, then there exists a \gls{peo} for $G'$.
+    Assume that, if for all the graphs $G = (V, E)$ such that $|V| < n$, if $\chordalind{G}$, then there exists a \gls{peo} for $G$.
 
     \medskip
 
     \textbf{Inductive step:}
-    Because $\chordalind{G'}$, there exists a node $v$ such that this node is simplicial in $G'$ and $\chordalind{G' - v}$. Since $|V(G' - v)| < n$, we apply the inductive hypothesis, obtaining that $u_1, u_2, \dots, u_n$ is a valid \gls{peo} for $G' - v$. Because $v$ is simplicial in $G'$, we can create a \gls{peo} for $G'$ which is $u_1, u_2, \dots, u_n, v$.
+    We need to prove that for all the graphs $G' = (V', E')$ such that $|V'| < n+1$, if $\chordalind{G'}$, then there exists a \gls{peo} for $G'$.
+    Because $\chordalind{G'}$, there exists a node $v$ such that $\simplicial{v}{G'}$ and $\chordalind{G' - v}$. Since $|V(G' - v)| < n$, we apply the inductive hypothesis, obtaining that $u_1, u_2, \dots, u_n$ is a valid \gls{peo} for $G' - v$. Then, because $\simplicial{v}{G'}$, we can create a \gls{peo} for $G'$ which is $u_1, u_2, \dots, u_n, v$.
 \end{proof}
 
-Now, we introduce the completeness theorem for \texttt{is\_simplicialb} with respect to $\mathrm{Simplicial}$.
+Now, we prove the completeness of \texttt{is\_simplicialb} with respect to $\simplicialsymbol$.
 
 \begin{lemma}[Completeness of \texttt{is\_simplicialb}]\label{lem:sbcomp}
-Let $G = (V, E)$ and $u \in V$ such that $\mathrm{Simplicial}(u, G)$ holds, then \texttt{is\_simplicialb} returns \texttt{true}. \Coqed
+Let $G = (V, E)$ and $u \in V$ such that $\simplicial{u}{G}$ holds, then \texttt{is\_simplicialb} returns \texttt{true}. \Coqed
 \end{lemma}
 
-\begin{theorem}[Second Invariant of \texttt{eliminate\_step}]\label{thm:inv-elim-2}
-    Let $G = (V, E)$, if it is the case that $\chordalpeo{G}$, and \texttt{eliminate\_step} does not return any node, then $G = (\emptyset, \emptyset)$. \Coqed
-\end{theorem}
+\begin{lemma}[Second Invariant of \texttt{eliminate\_step}]\label{lem:inv-elim-2}
+    Let $G = (V, E)$, if it is the case that $\chordalpeo{G}$, and \texttt{eliminate\_step} does not return any node, then $G = G_\emptyset$. \Coqed
+\end{lemma}
 \begin{proof}
-    Assume $\chordalpeo{G}$ and that \texttt{eliminate\_next} does not return any node. By \Cref{lem:chordal12}, $\chordalind{G}$ holds. As stated in \Cref{def:chordal2}, either $G$ is the empty graph, or there exists $u$ such that $\mathrm{Simplicial(u, G)}$ and $\chordalind{G - u}$. In the second case, \Cref{lem:sbcomp} lets us derive that \texttt{is\_simplicialb} returns \texttt{true} for $u$. However, this contradicts the assumption, since \texttt{eliminate\_step} did not return any value. Because of that, the only possible case is the one where $G = (\emptyset, \emptyset)$.
+    Assume that $\chordalpeo{G}$ and that \texttt{eliminate\_next} does not return any node. By \Cref{lem:chordal12}, $\chordalind{G}$ holds. As stated in \Cref{def:chordal2}, either $G = G_\emptyset$, or there exists $u$ such that $\simplicial{u}{G}$ and $\chordalind{G - u}$. In the second case, \Cref{lem:sbcomp} lets us derive that \texttt{is\_simplicialb} returns \texttt{true} for some $u$. However, if that was the case, \texttt{eliminate\_step} would have returned node $u$, which is not the case. Because of that, the only possible case is the first one, where $G = G_\emptyset$.
 \end{proof}
 
-\section{Partial correctness of \texttt{eliminate\_step}}
+\section{Partial correctness of \texttt{eliminate}}
 
-After defining the two invariants for the \texttt{eliminate\_step} function, We prove its partial correctness.
+After defining the two invariants for the \texttt{eliminate\_step} function, we prove the partial correctness of \texttt{eliminate}.
 
-\begin{theorem}[Partial Correctness of \texttt{eliminate\_step}]\label{thm:par-cor}
-    Let $G = (V, E)$ such that $\chordalpeo{G}$, if \texttt{eliminate\_step} returns node $u$, then $\mathrm{Simplicial}(u, G)$, otherwise $G = (\emptyset, \emptyset)$. \Coqed
+\begin{theorem}[Partial Correctness of \texttt{eliminate}]\label{thm:par-cor}
+    Let $G = (V, E)$ such that $\chordalpeo{G}$, if \texttt{eliminate\_step} returns node $u$, then $\simplicial{u}{G}$, otherwise $G = G_\emptyset$. \Coqed
 \end{theorem}
 
 An additional result from graph theory is the following:
 
 \begin{theorem}[Chordality Invariant After Node Removal]\label{thm:cho-inv}
-    Given graph $G = (V, E)$, if $\chordalpeo{G}$, then $\chordalpeo{G - u}$ for an arbitrary $u$~\cite{golumbic2004algorithmic}.
+    Given graph $G = (V, E)$, if $\chordalind{G}$, then $\chordalind{G - u}$ for an arbitrary $u$~\cite{golumbic2004algorithmic}.
 \end{theorem}
 
-We do not include a proof for \Cref{thm:cho-inv}. However, it is an important proposition as it states that, if an initial chordal graph is given, the \texttt{eliminate} function will ultimately return a \gls{peo} that contains every node of the graph.
+We do not include a proof for \Cref{thm:cho-inv}. However, this proposition is rather important as it entails that, if an initial chordal graph is given, the \texttt{eliminate} function will ultimately return a \gls{peo} that contains every node of the graph.

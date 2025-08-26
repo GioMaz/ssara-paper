@@ -29,8 +29,12 @@
 \newcommand{\BareCoqSymbol}{\includegraphics[height=0.9em]{layout/coq.pdf}}
 \newcommand{\CoqSymbol}{\raisebox{-.2ex}{\BareCoqSymbol\,}}
 \newcommand{\Coqed}{{\hfill\CoqSymbol}}
-\newcommand{\chordalpeo}[1]{\mathrm{Chordal}_{\gls{peo}}\left({#1}\right)}
-\newcommand{\chordalind}[1]{\mathrm{Chordal}_{ind}\left({#1}\right)}
+\newcommand{\chordalpeosymbol}{\mathrm{Chordal}_{\gls{peo}}}
+\newcommand{\chordalindsymbol}{\mathrm{Chordal}_{ind}}
+\newcommand{\chordalpeo}[1]{\vdash {#1} : \chordalpeosymbol}
+\newcommand{\chordalind}[1]{\vdash {#1} : \chordalindsymbol}
+\newcommand{\simplicialsymbol}{\mathrm{Simplicial}}
+\newcommand{\simplicial}[2]{{#2} \vdash {#1} : \simplicialsymbol}
 
 % Front page
 \usepackage{frontespizio}
