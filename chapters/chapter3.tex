@@ -79,16 +79,22 @@ The label type has three constructors, the reason for this is discussed more in 
 In order to perform computations, \gls{jair} provides arithmetic and logical instructions.
 We define the \texttt{val} type which represents an operand of these instructions. It can either be an integer, a register, or a pointer to a memory location (represented as a natural number). The following is the \gls{bnf} definition of the value type, along with its type definition:
 
+\begin{minipage}{0.45\linewidth}
 \begin{align*}
-\nt{value} ::= i( \mathbb Z ) \mid r( \nt{register} ) \mid p( \mathbb N )
+\nt{value} &::= i( \mathbb Z ) \\
+&\mid r( \nt{register} ) \\
+&\mid p( \mathbb N ) \\
 \end{align*}
-
+\end{minipage}
+\hfill
+\begin{minipage}{0.45\linewidth}
 \begin{lstlisting}[style=Rocq]
 Inductive val : Type :=
   | Imm (x : Z)
   | Reg (r : reg)
   | Ptr (p : nat).
 \end{lstlisting}
+\end{minipage}
 
 We define the syntax of expressions:
 
@@ -121,16 +127,21 @@ As can be seen from the previous definitions, binary expressions always use a re
 
 The instruction type \texttt{inst} reflects the core operations in our language. An instruction can either define a register by assigning to it the result of an expression, or it can store a value into memory.
 
+\begin{minipage}{0.55\linewidth}
 \begin{align*}
 \nt{instruction} &::= r( \nt{register} ) \leftarrow \nt{expression} \\
-&\mid \text{store} \ r( \nt{register} ) \ r( \nt{register} )
+&\mid \text{store} \ r( \nt{register} ) \ r( \nt{register} ) \\
 \end{align*}
-
+\end{minipage}
+\hfill
+\begin{minipage}{0.40\linewidth}
 \begin{lstlisting}[style=Rocq]
 Inductive inst : Type :=
   | Def (r : reg) (e : expr)
   | Store (v : val) (r : reg).
 \end{lstlisting}
+\end{minipage}
+
 
 \texttt{Store} is treated specially, because it does not produce a result that can be assigned to a register. Therefore, it cannot be expressed as a \texttt{Def}.
 Instructions are often grouped into sequences that are executed linearly. To represent it, we introduce the following non-terminals in our grammar.

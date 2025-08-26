@@ -5,7 +5,7 @@
 \usepackage{csquotes}
 \usepackage{graphicx}
 \usepackage{listings}
-\usepackage[svgnames]{xcolor}
+\usepackage[svgnames, dvipsnames]{xcolor}
 \usepackage{comment}
 \usepackage{setspace}
 \usepackage{appendix}
@@ -25,6 +25,13 @@
 \usepackage{mathpartir}
 \usepackage{bussproofs}
 
+% Coq-verified theorems symbol.
+\newcommand{\BareCoqSymbol}{\includegraphics[height=0.9em]{layout/coq.pdf}}
+\newcommand{\CoqSymbol}{\raisebox{-.2ex}{\BareCoqSymbol\,}}
+\newcommand{\Coqed}{{\hfill\CoqSymbol}}
+\newcommand{\chordalpeo}[1]{\mathrm{Chordal}_{\gls{peo}}\left({#1}\right)}
+\newcommand{\chordalind}[1]{\mathrm{Chordal}_{ind}\left({#1}\right)}
+
 % Front page
 \usepackage{frontespizio}
 \usepackage{tikz}
@@ -38,6 +45,14 @@
     columns=fullflexible,  % Match spacing of alltt
     keepspaces=true        % Preserve spaces like alltt
 }
+
+% Colorblind-proof colors
+\newcommand{\cbblack}[0]{black}
+\newcommand{\cbblue}[0]{RoyalBlue}
+\newcommand{\cborange}[0]{Apricot}
+\newcommand{\cbred}[0]{RedOrange}
+\newcommand{\cbcyan}[0]{Emerald}
+\newcommand{\cbpink}[0]{CarnationPink}
 
 \definecolor{myblue}{RGB}{0,0,180}
 \definecolor{mygreen}{RGB}{0,120,0}
@@ -60,7 +75,7 @@
 }
 
 \lstdefinelanguage{Rocq}{
-    morekeywords=[1]{Definition, Inductive, CoInductive, Class, Instance, Fixpoint, CoFixpoint, Function, Proof, Qed, Module},
+    morekeywords=[1]{Definition, Inductive, CoInductive, Class, Instance, Fixpoint, CoFixpoint, Function, Proof, Qed, Module, Fail},
     morekeywords=[2]{forall, exists, match, with, end, if, then, else, let, in, fix, fun, intros, unfold, destruct, lia},
     morekeywords=[3]{Prop, Type, Set, True, False, nat, bool, option, list},
     sensitive=true,
@@ -173,7 +188,6 @@
 \makenomenclature
 
 % To load as last packages to avoid problems
-\usepackage{cleveref}
 \usepackage{glossaries}
 \makeglossaries
 \newacronym{ra}{RA}{Register Assignment}
@@ -183,6 +197,7 @@
 \newacronym{cfg}{CFG}{Control Flow Graph}
 \newacronym{bnf}{BNF}{Backus-Naur Form}
 \newacronym{nasm}{NASM}{Netwise Assembler}
+\newacronym{jit}{JIT}{Just-In-Time}
 
 \usepackage{graphicx} % Required for inserting images
 \usepackage[T1]{fontenc}
@@ -194,6 +209,8 @@
 \usepackage{amsthm}
 \usepackage{array}
 \usepackage{physics}
+\usepackage{mdframed}
+\usepackage{textcomp}
 % \usepackage[table]{xcolor} %caricalo prima del nicematrix
 \usepackage{nicematrix}
 \newcolumntype{S}[1]{>{\raggedright\arraybackslash}m{#1}}
@@ -220,5 +237,52 @@
 \usetikzlibrary{arrows.meta, positioning}
 \setlength{\parindent}{0pt}
 \newcommand{\nt}[1]{\langle\text{#1}\rangle}
+\theoremstyle{definition}
+\newtheorem{assumption}{Assumption}[section]
+\usepackage{cleveref}
+\crefname{assumption}{assumption}{assumptions}
+\Crefname{assumption}{Assumption}{Assumptions}
+
+% Sharp
+\newcommand{\FSharp}{%
+  {\settoheight{\dimen0}{F}F\kern-.05em \resizebox{!}{\dimen0}{\raisebox{\depth}{\#}}}}
+
+% Boxes
+\newcommand{\textgraybox}[1]{\boxed{#1}}
+\newdimen\zzfontsz
+\newcommand{\fontsz}[2]{\zzfontsz=#1%
+{\fontsize{\zzfontsz}{1.2\zzfontsz}\selectfont{#2}}}
+\newcommand{\mathsz}[2]{\text{\fontsz{#1}{$#2$}}}
+\newcommand{\instsymColon}{%
+     \raisebox{-0.09ex}{\text{\normalfont{:}}}}
+\newcommand{\judgboxfontsize}[1]{%
+        \mathsz{11pt}{#1}%
+}
+\newcommand{\judgbox}[2]{%
+      {\raggedright \textgraybox{\ensuremath{\judgboxfontsize{#1}}}\!\;%
+        \fontsz{9pt}{\begin{tabular}[c]{l} #2 \end{tabular}} %
+}}
+\newcommand{\judgboxb}[2]{%
+  \judgbox{#1}{#2}\hspace{1ex}%
+}
+\mdfdefinestyle{judgframe}{%
+  topline=false, %
+  innertopmargin=-2.84ex, %
+  innerleftmargin=-.1ex, %
+  innerrightmargin=0ex, %
+  linewidth=.5pt %
+}
+\newcounter{judgements}
+\crefname{judgements}{judgement}{judgements}
+\newcommand{\judgementsref}[1]{\Cref{judgements:#1}}
+\newenvironment{judgframe}[4][-2.84ex]
+    {\begin{mdframed}[style=judgframe,innertopmargin=#1]\noindent%
+      \judgbox{#3}{,,#4''}\def\thejudgements{\ensuremath{#3}}\refstepcounter{judgements}\label[judgements]{judgements:#2}\hrulefill\\[-0.9mm]%
+      \begin{center}
+    }
+  {\end{center}%
+   \end{mdframed}%
+   \noindent%
+  }
 
 \makeindex

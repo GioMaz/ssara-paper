@@ -113,3 +113,172 @@ journal = {Lecture Notes In Computer Science}
   year={2004},
   publisher={North Holland}
 }
+
+@INPROCEEDINGS{6694089,
+  author={Xavier, Tiago Cariolano de Souza and Oliveira, George Souza and Lima, Ewerton Daniel de and Silva, Anderson Faustino da},
+  booktitle={2012 31st International Conference of the Chilean Computer Science Society},
+  title={A Detailed Analysis of the LLVM's Register Allocators},
+  year={2012},
+  volume={},
+  number={},
+  pages={190-198},
+  keywords={Registers;Resource management;Runtime;Context;Interference;Benchmark testing;Image color analysis;LLVM;Register Allocator;Performance},
+  doi={10.1109/SCCC.2012.29}
+}
+
+@article{HACK2006150,
+title = {Optimal register allocation for SSA-form programs in polynomial time},
+journal = {Information Processing Letters},
+volume = {98},
+number = {4},
+pages = {150-155},
+year = {2006},
+issn = {0020-0190},
+doi = {https://doi.org/10.1016/j.ipl.2006.01.008},
+url = {https://www.sciencedirect.com/science/article/pii/S0020019006000196},
+author = {Sebastian Hack and Gerhard Goos},
+keywords = {Combinatorial problems, Graph algorithms},
+abstract = {This paper gives a constructive proof that the register allocation problem for a uniform register set is solvable in polynomial time for SSA-form programs.}
+}
+
+@article{10.1145/330249.330250,
+author = {Poletto, Massimiliano and Sarkar, Vivek},
+title = {Linear scan register allocation},
+year = {1999},
+issue_date = {Sept. 1999},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {21},
+number = {5},
+issn = {0164-0925},
+url = {https://doi.org/10.1145/330249.330250},
+doi = {10.1145/330249.330250},
+abstract = {We describe a new algorithm for fast global register allocation called linear scan. This algorithm is not based on graph coloring, but allocates registers to variables in a single linear-time scan of the variables' live ranges. The linear scan algorithm is considerably faster than algorithms based on graph coloring, is simple to implement, and results in code that is almost as efficient as that obtained using more complex and time-consuming register allocators based on graph coloring. The algorithm is of interest in applications where compile time is a concern, such as dynamic compilation systems, “just-in-time” compilers, and interactive development environments.},
+journal = {ACM Trans. Program. Lang. Syst.},
+month = sep,
+pages = {895–913},
+numpages = {19},
+keywords = {code optimization, compilers, register allocation}
+}
+
+@article{10.1145/1369396.1370017,
+author = {Kotzmann, Thomas and Wimmer, Christian and M\"{o}ssenb\"{o}ck, Hanspeter and Rodriguez, Thomas and Russell, Kenneth and Cox, David},
+title = {Design of the Java HotSpot™ client compiler for Java 6},
+year = {2008},
+issue_date = {May 2008},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {5},
+number = {1},
+issn = {1544-3566},
+url = {https://doi.org/10.1145/1369396.1370017},
+doi = {10.1145/1369396.1370017},
+abstract = {Version 6 of Sun Microsystems' Java HotSpot™ VM ships with a redesigned version of the client just-in-time compiler that includes several research results of the last years. The client compiler is at the heart of the VM configuration used by default for interactive desktop applications. For such applications, low startup and pause times are more important than peak performance. This paper outlines the new architecture of the client compiler and shows how it interacts with the VM. It presents the intermediate representation that now uses static single-assignment (SSA) form and the linear scan algorithm for global register allocation. Efficient support for exception handling and deoptimization fulfills the demands that are imposed by the dynamic features of the Java programming language. The evaluation shows that the new client compiler generates better code in less time. The popular SPECjvm98 benchmark suite is executed 45\% faster, while the compilation speed is also up to 40\% better. This indicates that a carefully selected set of global optimizations can also be integrated in just-in-time compilers that focus on compilation speed and not on peak performance. In addition, the paper presents the impact of several optimizations on execution and compilation speed. As the source code is freely available, the Java HotSpot™ VM and the client compiler are the ideal basis for experiments with new feedback-directed optimizations in a production-level Java just-in-time compiler. The paper outlines research projects that add fast algorithms for escape analysis, automatic object inlining, and array bounds check elimination.},
+journal = {ACM Trans. Archit. Code Optim.},
+month = may,
+articleno = {7},
+numpages = {32},
+keywords = {Java, compiler, deoptimization, intermediate representation, just-in-time compilation, optimization, register allocation}
+}
+
+@inproceedings{10.1145/1772954.1772979,
+author = {Wimmer, Christian and Franz, Michael},
+title = {Linear scan register allocation on SSA form},
+year = {2010},
+isbn = {9781605586359},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/1772954.1772979},
+doi = {10.1145/1772954.1772979},
+abstract = {The linear scan algorithm for register allocation provides a good register assignment with a low compilation overhead and is thus frequently used for just-in-time compilers. Although most of these compilers use static single assignment (SSA) form, the algorithm has not yet been applied on SSA form, i.e., SSA form is usually deconstructed before register allocation. However, the structural properties of SSA form can be used to simplify the algorithm.With only one definition per variable, lifetime intervals (the main data structure) can be constructed without data flow analysis. During allocation, some tests of interval intersection can be skipped because SSA form guarantees non-intersection. Finally, deconstruction of SSA form after register allocation can be integrated into the resolution phase of the register allocator without much additional code.We modified the linear scan register allocator of the Java HotSpot client compiler so that it operates on SSA form. The evaluation shows that our simpler and faster version generates equally good or slightly better machine code.},
+booktitle = {Proceedings of the 8th Annual IEEE/ACM International Symposium on Code Generation and Optimization},
+pages = {170–179},
+numpages = {10},
+keywords = {register allocation, linear scan, lifetime analysis, just-in-time compilation, SSA form deconstruction, SSA form, Java},
+location = {Toronto, Ontario, Canada},
+series = {CGO '10}
+}
+
+@misc{Olesen2011Greedy,
+  author       = {Jakob Stoklund Olesen},
+  title        = {Greedy Register Allocation in LLVM 3.0},
+  year         = {2011},
+  howpublished = {\url{https://blog.llvm.org/2011/09/greedy-register-allocation-in-llvm-30.html}},
+  note         = {Accessed: 2025-08-25}
+}
+
+@inproceedings{2006-Leroy-compcert,
+  author = {Xavier Leroy},
+  title = {Formal certification of a compiler back-end, or:
+                   programming a compiler with a proof assistant},
+  booktitle = {33rd ACM symposium on Principles of Programming Languages},
+  year = 2006,
+  publisher = {ACM Press},
+  pages = {42--54},
+  url = {http://xavierleroy.org/publi/compiler-certif.pdf},
+  urlpublisher = {http://doi.acm.org/10.1145/1111037.1111042},
+  hal = {http://hal.inria.fr/inria-00000963/},
+  abstract = {This paper reports on the development and formal certification (proof
+of semantic preservation) of a compiler from Cminor (a C-like
+imperative language) to PowerPC assembly code, using the Coq proof
+assistant both for programming the compiler and for proving its
+correctness.  Such a certified compiler is useful in the context of
+formal methods applied to the certification of critical software: the
+certification of the compiler guarantees that the safety properties
+proved on the source code hold for the executable compiled code as well.},
+  pubkind = {conf-int-mono}
+}
+
+@inproceedings {203642,
+author = {Barry Bond and Chris Hawblitzel and Manos Kapritsos and K. Rustan M. Leino and Jacob R. Lorch and Bryan Parno and Ashay Rane and Srinath Setty and Laure Thompson},
+title = {Vale: Verifying {High-Performance} Cryptographic Assembly Code},
+booktitle = {26th USENIX Security Symposium (USENIX Security 17)},
+year = {2017},
+isbn = {978-1-931971-40-9},
+address = {Vancouver, BC},
+pages = {917--934},
+url = {https://www.usenix.org/conference/usenixsecurity17/technical-sessions/presentation/bond},
+publisher = {USENIX Association},
+month = aug
+}
+
+@inproceedings{10.1007/11688839_12,
+author = {Cavazos, John and Moss, J. Eliot B. and O'Boyle, Michael F. P.},
+title = {Hybrid optimizations: which optimization algorithm to use?},
+year = {2006},
+isbn = {354033050X},
+publisher = {Springer-Verlag},
+address = {Berlin, Heidelberg},
+url = {https://doi.org/10.1007/11688839_12},
+doi = {10.1007/11688839_12},
+abstract = {We introduce a new class of compiler heuristics: hybrid optimizations. Hybrid optimizations choose dynamically at compile time which optimization algorithm to apply from a set of different algorithms that implement the same optimization. They use a heuristic to predict the most appropriate algorithm for each piece of code being optimized. Specifically, we construct a hybrid register allocator that chooses between linear scan and graph coloring register allocation. Linear scan is more efficient, but sometimes less effective; graph coloring is generally more expensive, but sometimes more effective. Our setting is Java JIT compilation, which makes optimization algorithm efficiency particularly important.Our hybrid allocator decides, based on features of a method, which algorithm to apply to that method. We used supervised learning to induce the decision heuristic. We evalute our technique within Jikes RVM [1] and show on average it outperforms graph coloring by 9\% and linear scan by 3\% for a typical compilation scenario. To our knowledge, this is the first time anyone has used heuristics induced by machine learning to select between different optimization algorithms.},
+booktitle = {Proceedings of the 15th International Conference on Compiler Construction},
+pages = {124–138},
+numpages = {15},
+location = {Vienna, Austria},
+series = {CC'06}
+}
+
+@article{DBLP:journals/corr/BhargavanDFHPRR17,
+  author       = {Jonathan Protzenko and
+                  Jean Karim Zinzindohou{\'{e}} and
+                  Aseem Rastogi and
+                  Tahina Ramananandro and
+                  Peng Wang and
+                  Santiago Zanella{-}B{\'{e}}guelin and
+                  Antoine Delignat{-}Lavaud and
+                  Catalin Hritcu and
+                  Karthikeyan Bhargavan and
+                  C{\'{e}}dric Fournet and
+                  Nikhil Swamy},
+  title        = {Verified Low-Level Programming Embedded in F\({}^{\mbox{*}}\)},
+  journal      = {CoRR},
+  volume       = {abs/1703.00053},
+  year         = {2017},
+  url          = {http://arxiv.org/abs/1703.00053},
+  eprinttype    = {arXiv},
+  eprint       = {1703.00053},
+  timestamp    = {Tue, 11 Mar 2025 21:55:09 +0100},
+  biburl       = {https://dblp.org/rec/journals/corr/BhargavanDFHPRR17.bib},
+  bibsource    = {dblp computer science bibliography, https://dblp.org}
+}

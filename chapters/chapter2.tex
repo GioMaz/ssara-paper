@@ -17,7 +17,7 @@ Recursive functions are typically defined using the \texttt{Fixpoint} keyword. W
 Some recursive functions, however, do not conform to this criterion. Take for example the function for performing division by repeated subtraction:
 
 \begin{lstlisting}[style=Rocq]
-Fixpoint div (a b : nat) : nat :=
+Fail Fixpoint div (a b : nat) : nat :=
   match b with
   | 0 => 0
   | _ =>
@@ -72,7 +72,7 @@ Intuitively, this is clearly the case, since at line 6 we pass \texttt{(a - b)},
 Now, we have to prove this formally, using the goal introduced by Rocq:
 
 \begin{lstlisting}[style=Rocq]
-forall a b n : nat, b = S n -> (S n <? a) = true -> id (a - S n) < id
+forall a b n : nat, b = S n -> (S n <? a) = true -> id (a - S n) < id a
 \end{lstlisting}
 
 For which we provide the following proof:
@@ -88,9 +88,48 @@ Qed.
 
 Here, at line 2, we introduce the quantified variables and the two assumptions into the context. At line 3 we perform case analysis on the argument \texttt a. In the first case, at line 4, we show that \texttt{a = 0}, contradicts the other assumptions. Finally, at line 5, we use the \texttt{lia} tactic to automatically prove that, for the case \texttt{a > 0} the goal is valid.
 
-\subsection{OCaml Extraction}
-\label{subsec:extract}
-% Content to be added.
+\subsection{Coinductive Types}
+\label{subsec:coind}
+
+In order to define the most common data types, we use the \texttt{Inductive} keyword. This keyword allows the definition of recursive types, like trees or lists. Here we show the definition of the \texttt{list} data type:
+
+\begin{lstlisting}[style=Rocq]
+Inductive list {A : Type} : Type :=
+  | Nil
+  | Cons (a : A) (l : list).
+\end{lstlisting}
+
+However, one limitation of the previous definition, is that we are not allowed to create an instance of a list that references itself. In particular, Rocq complains about definitions like these.
+
+\begin{lstlisting}[style=Rocq]
+Fail Definition infinite: list nat := Cons 7 infinite.
+\end{lstlisting}
+
+In fact, if Rocq were to evaluate this definition, it would get stuck creating an infinite list of sevens. Indeed, we would expect our list to have a start and an end.
+However, some types naturally require the usage self referencing definitions. For example, we may want to define the data type of graph that can contain self loops. Because of that, Rocq provides the \texttt{CoInductive} keyword. This keyword allows us to define infinite types which are evaluated lazily, avoiding the risk of getting stuck in an infinite loop. A classic example is the \texttt{stream} data type.
+
+\begin{lstlisting}[style=Rocq]
+CoInductive stream {A : Type} : Type :=
+| Cons (a : A) (s : stream).
+\end{lstlisting}
+
+This definition is similar to the one of the \texttt{list}. The only difference is that the \texttt{Nil} constructor is missing, ultimately never allowing an instance of this type to end. In order to define instances of this type we use the \texttt{CoFixpoint} keyword. This keyword, allows us to create recursive definitions, without a base case, something that was previously not allowed with the \texttt{Inductive} keyword. Now, we can define the list that failed in the previous example.
+
+\begin{lstlisting}[style=Rocq]
+CoFixpoint infinite : stream := Cons 7 infinite.
+\end{lstlisting}
+
+Additionally, we can create mutually recursive definitions.
+
+\begin{lstlisting}[style=Rocq]
+CoFixpoint zero : stream := Cons 0 one
+with one : stream := Cons 1 zero.
+\end{lstlisting}
+
+% \subsection{OCaml Extraction}
+% \label{subsec:extract}
+
+% In order
 
 \section{\glsentrylong{ssa} Form}
 \label{sec:ssa}
@@ -156,7 +195,7 @@ int foo() {
   \node (entry)   at (0, 0)       [draw, label=above:\textbf{start}]  {$a_0 \leftarrow 5$ \\ if $a_0 < 10$};
   \node (b1)      at (-1.5, -1.5) [draw, label=above:$B_1$]           {$a_1 \leftarrow a_0 + 1$};
   \node (b2)      at (1.5, -1.5)  [draw, label=above:$B_2$]           {$a_2 \leftarrow a_0 + 2$};
-  \node (end)     at (0, -3)      [draw, label=above:$B_3$]             {$a_3 \leftarrow \phi(a_1, a_2)$ \\ ret $a_3$};
+  \node (end)     at (0, -3)      [draw, label=above:$B_3$]           {$a_3 \leftarrow \phi(a_1, a_2)$ \\ ret $a_3$};
 
   \draw[->] (entry) -- (b1);
   \draw[->] (entry) -- (b2);
@@ -168,7 +207,7 @@ int foo() {
 \end{figure}
 
 In other instances of \gls{ssa} programs, we may find multiple $\phi$-instructions grouped together at the beginning of a basic block. Semantically, those instructions are executed in parallel.
-Take for example the \gls{ssa} block in \Cref{fig:par1} where we merge the control flow from two predecessors. If we come from the first one we assign $a_1$ to $a_3$ and $a_2$ to $a_4$, whereas, if we come from the second one, we assign $a_2$ to $a_3$ and $a_1$ to $a_4$. Now, in \Cref{fig:par2}, we show a valid \gls{ra}. If we come from the first predecessor, we don't need to do anything, as $r_1$ and $r_2$ are already in their target registers.
+Take for example the \gls{ssa} block in \Cref{fig:par1} where we merge the control flow from two predecessors. If we come from the first one we assign $a_1$ to $a_3$ and $a_2$ to $a_4$, whereas, if we come from the second one, we assign $a_2$ to $a_3$ and $a_1$ to $a_4$. Now, in \Cref{fig:par2}, we show a valid \gls{ra}. If we come from the first predecessor, no moves are required, as $r_1$ and $r_2$ are already in their target registers.
 However, if we come from the second predecessor, we need to perform a swap of $r_1$ and $r_2$. A sequential execution of the $\phi$-instructions, doesn't help, as in that case we would overwrite the content of $r_1$. If instead, we take the two $\phi$-instructions, and we execute them parallelly, we will match the intended behavior defined in \Cref{fig:par1}.
 
 % Possible improvement: maybe remove the third figure, and only talk about the semantics of the second figure (not the SSA destruction)
@@ -272,18 +311,17 @@ int foo() {
 \end{minipage}
 \end{figure}
 
-\definecolor{darkgreen}{RGB}{0,100,0}
 \begin{figure}[ht]
 \centering
 \begin{minipage}{0.48\textwidth}
   \centering
   \caption{Three-coloring of the interference graph shown in \Cref{fig:ig2}.}
   \begin{tikzpicture}[scale=1, every node/.style={circle, draw, minimum size=8mm}]
-    \node[fill=orange!50]    (a) at (1,1.5)  {a};
-    \node[fill=purple!50] (b) at (0,0)      {b};
-    \node[fill=darkgreen!50] (c) at (2,0)     {c};
-    \node[fill=purple!50] (d) at (3,1.5)    {d};
-    \node[fill=orange!50] (e) at (4,0)       {e};
+    \node[fill=\cbblue!60]    (a) at (1,1.5)  {a};
+    \node[fill=\cbred!60] (b) at (0,0)      {b};
+    \node[fill=\cbcyan!60] (c) at (2,0)     {c};
+    \node[fill=\cbred!60] (d) at (3,1.5)    {d};
+    \node[fill=\cbblue!60] (e) at (4,0)       {e};
 
     \draw (a) -- (b);
     \draw (b) -- (c);
@@ -295,14 +333,14 @@ int foo() {
 \hfill
 \begin{minipage}{0.48\textwidth}
 \lstset{style=C}
-\begin{lstlisting}[caption={{Program shown in \Cref{fig:ig1} after \gls{ra}.}}, label={fig:ig4}]
+\begin{lstlisting}[caption={{Program shown in \Cref{fig:ig1} after \gls{ra}.}}, label={fig:ig4}, escapeinside={(*}{*)}]
 int foo() {
-    int $\color{orange}{r_1}$ = get_a();
-    int $\color{purple}{r_2}$ = get_b();
-    int $\color{darkgreen}{r_3}$ = $\color{orange}{r_1}$ + $\color{purple}{r_2}$;
-    $\color{purple}{r_2}$ = $\color{darkgreen}{r_3}$ + $\color{purple}{r_2}$;
-    $\color{orange}{r_1}$ = $\color{orange}{r_1}$ + $\color{purple}{r_2}$;
-    return $\color{orange}{r_1}$;
+    int (*\textcolor{\cbblue}{a}*) = get_a();
+    int (*\textcolor{\cbred}{b}*) = get_b();
+    int (*\textcolor{\cbcyan}{c}*) = (*\textcolor{\cbblue}{a}*) + (*\textcolor{\cbred}{b}*);
+    int (*\textcolor{\cbred}{d}*) = (*\textcolor{\cbcyan}{c}*) + (*\textcolor{\cbred}{b}*);
+    int (*\textcolor{\cbblue}{e}*) = (*\textcolor{\cbblue}{a}*) + (*\textcolor{\cbred}{d}*);
+    return (*\textcolor{\cbblue}{e}*);
 }
 \end{lstlisting}
 \end{minipage}
@@ -321,7 +359,7 @@ Before talking about register assignment in SSA form we need to define some prop
   Given a graph $G = (V, E)$, a node $u \in V$ is simplicial in $G$, iff the neighborhood of $u$ is a clique of $G$.
 \end{definition}
 
-\begin{definition}[\gls{peo}]
+\begin{definition}[\gls{peo}]\label{def:peo}
   Given a graph $G = (V, E)$, a \gls{peo} is permutation of the nodes, $u_1, u_2, \dots, u_n$, such that $u_1$ is simplicial in $G$, $u_2$ is simplicial in $G - u_1$, \dots, and $u_n$ is simplicial in $(\{ u_n \}, \emptyset)$.
 \end{definition}
 
