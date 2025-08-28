@@ -317,11 +317,11 @@ int foo() {
   \centering
   \caption{Three-coloring of the interference graph shown in \Cref{fig:ig2}.}
   \begin{tikzpicture}[scale=1, every node/.style={circle, draw, minimum size=8mm}]
-    \node[fill=\cbblue!60]    (a) at (1,1.5)  {a};
-    \node[fill=\cbred!60] (b) at (0,0)      {b};
-    \node[fill=\cbcyan!60] (c) at (2,0)     {c};
-    \node[fill=\cbred!60] (d) at (3,1.5)    {d};
-    \node[fill=\cbblue!60] (e) at (4,0)       {e};
+    \node[fill=\cbnodeA!60]  (a) at (1,1.5)  {a};
+    \node[fill=\cbnodeB!60]   (b) at (0,0)    {b};
+    \node[fill=\cbnodeC!60]  (c) at (2,0)    {c};
+    \node[fill=\cbnodeB!60]   (d) at (3,1.5)  {d};
+    \node[fill=\cbnodeA!60]  (e) at (4,0)    {e};
 
     \draw (a) -- (b);
     \draw (b) -- (c);
@@ -335,18 +335,18 @@ int foo() {
 \lstset{style=C}
 \begin{lstlisting}[caption={{Program shown in \Cref{fig:ig1} after \gls{ra}.}}, label={fig:ig4}, escapeinside={(*}{*)}]
 int foo() {
-    int (*\textcolor{\cbblue}{a}*) = get_a();
-    int (*\textcolor{\cbred}{b}*) = get_b();
-    int (*\textcolor{\cbcyan}{c}*) = (*\textcolor{\cbblue}{a}*) + (*\textcolor{\cbred}{b}*);
-    int (*\textcolor{\cbred}{d}*) = (*\textcolor{\cbcyan}{c}*) + (*\textcolor{\cbred}{b}*);
-    int (*\textcolor{\cbblue}{e}*) = (*\textcolor{\cbblue}{a}*) + (*\textcolor{\cbred}{d}*);
-    return (*\textcolor{\cbblue}{e}*);
+    int (*\textcolor{\cbnodeA}{a}*) = get_a();
+    int (*\textcolor{\cbnodeB}{b}*) = get_b();
+    int (*\textcolor{\cbnodeC}{c}*) = (*\textcolor{\cbnodeA}{a}*) + (*\textcolor{\cbnodeB}{b}*);
+    int (*\textcolor{\cbnodeB}{d}*) = (*\textcolor{\cbnodeC}{c}*) + (*\textcolor{\cbnodeB}{b}*);
+    int (*\textcolor{\cbnodeA}{e}*) = (*\textcolor{\cbnodeA}{a}*) + (*\textcolor{\cbnodeB}{d}*);
+    return (*\textcolor{\cbnodeA}{e}*);
 }
 \end{lstlisting}
 \end{minipage}
 \end{figure}
 
-\subsection{\gls{ra} in SSA Form}
+\subsection{\glsentrylong{ra} in SSA Form}
 \label{subsec:ssara}
 
 Before talking about \gls{ra} in SSA form we need to define some properties of nodes and graphs.
