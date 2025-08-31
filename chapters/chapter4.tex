@@ -6,7 +6,7 @@
 \section{Liveness Analysis}
 \label{sec:liveness}
 
-In this phase, we compute the set of live variables at each program point. This step is crucial for determining which variables interfere and, therefore constitute an edge of the interference graph.
+In this phase, we compute the set of live variables at each program point. This step is crucial for determining which variables interfere and, therefore, constitute an edge of the interference graph.
 
 Generally a liveness analysis algorithm works this way:
 we start from the last instruction of the program and go back to the start instruction in a post-order fashion, while we do that we compute the following sets for each instruction $i$:
@@ -14,7 +14,7 @@ we start from the last instruction of the program and go back to the start instr
   \item LiveIn[$i$] which contains the variables that are live \textit{before} the execution of instruction $i$;
   \item LiveOut[$i$] which instead contains the variables live \textit{after} the execution of $i$;
   \item Def[$i$] are the variables created by the instruction, in our language this set is either a singleton or the empty set as we can only define at most one variable per instruction;
-  \item Use[$i$] are the variables used as arguments by the instruction, at most two in our language since that is the maximum arity of our expressions;
+  \item Use[$i$] are the variables used as arguments by the instruction, at most two in our language since that is the maximum arity of our expressions.
 \end{itemize}
 
 Since in our language instructions can be of three different kinds we define different dataflow equations for each instruction type.
@@ -51,7 +51,7 @@ In order to perform \gls{ra} we use the approach presented by Hack-Grund-Goos~\c
 \begin{itemize}
   \item In \Cref{subsec:ig}, we use the liveness information, obtained from the liveness analysis step, to build the interference graph;
   \item In \Cref{subsec:peo}, we iteratively remove the simplicial nodes from the interference graph obtaining a \gls{peo};
-  \item Finally, in \Cref{subsec:coloring}, we reinsert the nodes of the \gls{peo} in \textit{reverse} order into the interference graph. While doing that, we assign them a color that is not already taken by their neighborhoods;
+  \item Finally, in \Cref{subsec:coloring}, we reinsert the nodes of the \gls{peo} in \textit{reverse} order into the interference graph. While doing that, we assign them a color that is not already taken by their neighborhoods.
 \end{itemize}
 
 \subsection{Building the Interference Graph}
@@ -190,7 +190,7 @@ Fixpoint get_coloring_aux
 \end{lstlisting}
 
 At line 6, we extract the head of the \gls{peo}. We then color it with the \texttt{get\_color} function. If a color is found, we proceed with a recursive call on the rest of the \gls{peo}. Otherwise, we return the \texttt{None} constructor.
-The \texttt{get\_coloring\_aux} function requires some specific parameters to be passed initially. In particular, it must be provided with a \textit{reversed}\texttt{peo}, and an empty coloring. We define these parameters in the wrapper \texttt{get\_coloring}.
+The \texttt{get\_coloring\_aux} function requires some specific parameters to be passed initially. In particular, it must be provided with a \textit{reversed} \texttt{peo}, and an empty coloring. We define these parameters in the wrapper \texttt{get\_coloring}.
 
 \begin{lstlisting}[style=Rocq]
 Definition get_coloring

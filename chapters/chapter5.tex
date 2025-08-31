@@ -17,7 +17,7 @@ In particular, we extract the following functions:
   \item \texttt{Peo.eliminate} to obtain the \gls{peo};
   \item \texttt{Color.get\_coloring} to construct the coloring map;
   \item \texttt{Color.color\_program} to convert each virtual register of the program into its assigned physical register;
-  \item \texttt{Destruct.ssa\_destruct} to translate the $\phi$-instructions;
+  \item \texttt{Destruct.ssa\_destruct} to translate the $\phi$-instructions.
 \end{itemize}
 
 After extraction, we compose the various phases of our \gls{ra} pipeline into the \texttt{regassign} function:
@@ -44,12 +44,12 @@ let regassign irvreg_program =
 \end{lstlisting}
 
 This function accepts a program written in \gls{jair} and returns an equivalent program without $\phi$-instructions and using only x86-64 registers.
-Note that, at line 12, we throw an expection if we are not able to perform the coloring due to a high number of variables, this check is mandatory, as we do not perform spilling.
+Note that, at line 12, we throw an exception if we are not able to perform the coloring due to a high number of variables, this check is mandatory, as we do not perform spilling.
 
 \section{Code Generation}
 \label{sec:codegen}
 
-After obtaining the converted data structure, the generation of assembly code is straightforward. We simply perform a depth-first visit on the \gls{cfg} and generate the assembly code for each basic block.
+After obtaining the converted data structure, the generation of assembly code is straightforward. We simply perform a depth-first traversal of the \gls{cfg} and generate the assembly code for each basic block.
 In our implementation, we chose to emit assembly with the \gls{nasm} syntax.
 
 The following OCaml function does exactly so, writing the assembly code of a program into the specified output channel:
