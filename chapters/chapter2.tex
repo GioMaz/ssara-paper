@@ -27,7 +27,7 @@ Fail Fixpoint div (a b : nat) : nat :=
   end.
 \end{lstlisting}
 
-As we see, at line 6, we perform a recursive call, passing \texttt{(a - b)} as an argument. It is obvious that the argument decreases on each recursive call. However, Rocq cannot guess it, as it is only capable of identifying a decreasing argument if it is the parameter of a constructor. Because of that the previous definition generates an error.
+As we see, at line 6, we perform a recursive call, passing \texttt{(a - b)} as an argument. It is obvious that the argument decreases on each recursive call. However, Rocq cannot guess it, as it is only capable of identifying a decreasing argument if it is the parameter of a constructor. Because of that, the previous definition generates an error.
 To solve such cases, in our project, we use two common workarounds.
 
 % There are more, say that in this theses you only use these 2 workaround
@@ -126,10 +126,58 @@ CoFixpoint zero : stream := Cons 0 one
 with one : stream := Cons 1 zero.
 \end{lstlisting}
 
-% \subsection{OCaml Extraction}
-% \label{subsec:extract}
+\subsection{OCaml Extraction}
+\label{subsec:extract}
 
-% In order
+In order to obtain an efficient version of the verified code, Rocq allows us to extract Gallina code to a variety of other languages. Namely OCaml, Haskell, and Lisp. Here we show an example of extraction of the \texttt{add} recursive function:
+
+\begin{lstlisting}[style=Rocq]
+Fixpoint add (n m : nat) : nat :=
+  match m with
+  | O => n
+  | S m' => S (add n m')
+  end.
+\end{lstlisting}
+
+And here we perform the extraction:
+
+\begin{lstlisting}[style=Rocq]
+Extraction Language OCaml.
+Extraction "main.ml" add.
+\end{lstlisting}
+
+At line 1 we set the extraction language to OCaml. At line 2 we extract the \texttt{add} function as OCaml into the \texttt{main.ml} file. The resulting code is the following:
+
+\begin{lstlisting}[style=OCaml]
+type nat =
+| O
+| S of nat
+
+let rec add n = function
+| O -> n
+| S m' -> S (add n m')
+\end{lstlisting}
+
+In this translation, we can see that we are also extracting the \texttt{nat} type. However, OCaml already provides us with a primitive type for discrete numbers, that is, the \texttt{int} type. We then choose to extract \texttt{nat} as \texttt{int}:
+
+\begin{lstlisting}[style=OCaml]
+Extract Inductive nat =>
+  "int"
+  [ "0" "(fun x -> x + 1)" ]
+  "(fun zero succ n -> if n = 0 then zero () else succ (n - 1))".
+\end{lstlisting}
+
+Here, at line 2, we say that every instance of \texttt{nat} is translated as an \texttt{int}. At line 3, we provide the OCaml representation of the different constructors of the Rocq type. At line 4, we tell OCaml that it should treat a match expression of the \texttt{int} type as a higher order function. In particular, if the value is the \texttt{O} constructor, it should call the \texttt{zero} function. Instead, if the value is the \texttt{S} constructor, it should call the \texttt{succ} function. After adding these lines, we extract again our \texttt{add} function:
+
+\begin{lstlisting}[style=OCaml]
+let rec add n m =
+  (fun zero succ n -> if n = 0 then zero () else succ (n - 1))
+    (fun _ -> n)
+    (fun m' -> (fun x -> x + 1) (add n m'))
+    m
+\end{lstlisting}
+
+At line 2, we match against the different cases of \texttt{m}. The two match branches are passed as arguments of the higher order function, and are respectively \texttt{zero} and \texttt{succ}.
 
 \section{\glsentrylong{ssa} Form}
 \label{sec:ssa}

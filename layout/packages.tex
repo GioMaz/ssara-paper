@@ -11,7 +11,7 @@
 \usepackage{appendix}
 \usepackage{lipsum}     %testo di prova (si può cancellare una volta iniziato a scrivere)
 \usepackage{lineno}
-\linenumbers
+% \linenumbers
 
 %\usepackage[9-15]{pagesel}
 % attenzione: la filigrana in prima pagina ha opacità massima con questa opzione attivata
@@ -80,7 +80,7 @@
 }
 
 \lstdefinelanguage{Rocq}{
-    morekeywords=[1]{Definition, Inductive, CoInductive, Class, Instance, Fixpoint, CoFixpoint, Function, Proof, Qed, Module, Fail},
+    morekeywords=[1]{Definition, Inductive, CoInductive, Class, Instance, Fixpoint, CoFixpoint, Function, Proof, Qed, Module, Fail, Require, Import},
     morekeywords=[2]{forall, exists, match, with, end, if, then, else, let, in, fix, fun, intros, unfold, destruct, lia},
     morekeywords=[3]{Prop, Type, Set, True, False, nat, bool, option, list},
     sensitive=true,

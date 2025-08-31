@@ -45,10 +45,10 @@ Before defining the predicate, let us introduce some notation.
     \]
 \end{definition}
 
-\begin{definition}[Universal Vertex Over a Subgraph]
-    Let $G = (V, E)$ and $H$ be a subgraph of $G$ with vertex set $V(H)$, we define the graph with a universal vertex $u$ over $H$ as:
+\begin{definition}[Universal Vertex Over a Node and Its Neighbors]
+    Let $G = (V, E)$ and $u$ and $b$ nodes, we define the graph with a universal vertex $v$ over $u$ and its neighbors as:
     \[
-        \addvertex{G}{H}{u} := (\{ V \cup \{ u \}, E \cup \{ \{ u, v \} \;|\; v \in V(H) \} \})
+        \addvertex{G}{u}{v} := (V \cup \{ v \}, E \cup \{ u, v \} \cup \{ \{ v, v' \} \;|\; v' \in N(u) \})
     \]
 \end{definition}
 
@@ -57,24 +57,19 @@ Let $G = (V, E)$, and $u$ be any node, we say that $u$ is simplicial in graph $G
 \begin{mathpar}
     \inferrule*[Right=SimplicialSingleton]
         {u \not \in V}
-        % {\mathrm{Simplicial}(u, G + u)}
-        {\simplicial{u}{G}}
+        {\simplicial{u}{G+u}}
     \\
     \inferrule*[Right=SimplicialNode]
-        % {\mathrm{Simplicial}(u, G) \\ u \neq v}
-        % {\mathrm{Simplicial}(u, G + v )}
-        {\simplicial{u}{G} \\ u \neq v}
+        {\simplicial{u}{G}}
         {\simplicial{u}{G + v}}
     \\
     \inferrule*[Right=SimplicialEdge]
-        % {\mathrm{Simplicial}(u, G) \\ u \neq v' \\ u \neq v''}
-        % {\mathrm{Simplicial}(u, G + \{ v', v'' \} )}
         {\simplicial{u}{G} \\ u \neq v' \\ u \neq v''}
         {\simplicial{u}{G + \{ v', v''\}}}
     \\
     \inferrule*[Right=SimplicialNeighbor]
         {\simplicial{u}{G}}
-        {\simplicial{u}{\addvertex{G}{N(u)}{u}}}
+        {\simplicial{u}{\addvertex{G}{u}{v}}}
 \end{mathpar}
 \end{definition}
 
@@ -183,6 +178,9 @@ After defining the two invariants for the \texttt{eliminate\_step} function, we 
 \begin{theorem}[Partial Correctness of \texttt{eliminate}]\label{thm:par-cor}
     Let $G = (V, E)$ such that $\chordalpeo{G}$, if \texttt{eliminate\_step} returns node $u$, then $\simplicial{u}{G}$, otherwise $G = G_\emptyset$. \Coqed
 \end{theorem}
+\begin{proof}
+    Assume that $\chordalpeo{G}$. If \texttt{eliminate\_step} returns node $u$, follows by \Cref{lem:inv-elim-1} that $\simplicial{u}{G}$. If instead \texttt{eliminate\_step} does not return any node, follows by \Cref{lem:inv-elim-2} that $G = G_\emptyset$.
+\end{proof}
 
 An additional result from graph theory is the following:
 
